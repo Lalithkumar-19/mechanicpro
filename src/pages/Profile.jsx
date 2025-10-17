@@ -1,13 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  User, Settings, Car, Calendar, Bell, Edit3, Save, Trash2, 
-  Plus, Phone, Mail, MapPin, Clock, CheckCircle, XCircle, 
-  Clock4, Filter, Search, Star, Wrench
+import { useNavigate } from 'react-router-dom';
+import {
+  User, Settings, Car, Calendar, Bell, Edit3, Save, Trash2,
+  Plus, Phone, Mail, MapPin, Clock, CheckCircle, XCircle,
+  Clock4, Filter, Search, Star, Wrench, X, LogOut,
+  WrenchIcon,
+  CalendarIcon,
+  DollarSign,
+  PhoneIcon,
+  MapPinIcon
 } from 'lucide-react';
+import axiosInstance from '../utils/axiosinstance';
+import { uploadToImgBB } from '../utils/uploadtoImbb';
 
 // Car Book CRUD Component
-const CarBook = ({ cars, onAddCar, onEditCar, onDeleteCar }) => {
+const CarBook = ({ cars, onAddCar, onEditCar, onDeleteCar, loading }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [editingCar, setEditingCar] = useState(null);
   const [formData, setFormData] = useState({
@@ -56,7 +64,8 @@ const CarBook = ({ cars, onAddCar, onEditCar, onDeleteCar }) => {
         </div>
         <button
           onClick={() => setIsAdding(true)}
-          className="flex items-center space-x-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-xl transition-colors duration-300"
+          disabled={loading}
+          className="flex items-center space-x-2 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-600 text-white px-4 py-2 rounded-xl transition-colors duration-300"
         >
           <Plus className="w-4 h-4" />
           <span>Add Car</span>
@@ -148,96 +157,113 @@ const CarBook = ({ cars, onAddCar, onEditCar, onDeleteCar }) => {
       )}
 
       {/* Cars Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {cars.map((car) => (
-          <motion.div
-            key={car.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-gray-800/50 rounded-2xl p-6 border border-gray-700 hover:border-orange-500/40 transition-all duration-300"
-          >
-            <div className="flex justify-between items-start mb-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-12 h-12 bg-orange-500/20 rounded-xl flex items-center justify-center">
-                  <Car className="w-6 h-6 text-orange-400" />
-                </div>
-                <div>
-                  <h4 className="text-lg font-semibold text-white">{car.name}</h4>
-                  <p className="text-gray-400 text-sm">{car.model}</p>
-                </div>
-              </div>
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => handleEdit(car)}
-                  className="p-2 text-gray-400 hover:text-orange-400 transition-colors duration-300"
-                >
-                  <Edit3 className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => onDeleteCar(car.id)}
-                  className="p-2 text-gray-400 hover:text-red-400 transition-colors duration-300"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-gray-400">Year:</span>
-                <span className="text-white font-medium">{car.year}</span>
-              </div>
-              {car.licensePlate && (
-                <div className="flex justify-between">
-                  <span className="text-gray-400">License:</span>
-                  <span className="text-white font-medium">{car.licensePlate}</span>
-                </div>
-              )}
-            </div>
-          </motion.div>
-        ))}
-      </div>
-
-      {cars.length === 0 && !isAdding && (
+      {loading ? (
         <div className="text-center py-12">
-          <div className="w-16 h-16 bg-gray-700 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <Car className="w-8 h-8 text-gray-400" />
-          </div>
-          <h4 className="text-lg font-semibold text-white mb-2">No cars added yet</h4>
-          <p className="text-gray-400">Add your first car to get started</p>
+          <div className="w-16 h-16 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading cars...</p>
         </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {cars.map((car) => (
+              <motion.div
+                key={car.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-gray-800/50 rounded-2xl p-6 border border-gray-700 hover:border-orange-500/40 transition-all duration-300"
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-12 h-12 bg-orange-500/20 rounded-xl flex items-center justify-center">
+                      <Car className="w-6 h-6 text-orange-400" />
+                    </div>
+                    <div>
+                      <h4 className="text-lg font-semibold text-white">{car.name}</h4>
+                      <p className="text-gray-400 text-sm">{car.model}</p>
+                    </div>
+                  </div>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => handleEdit(car)}
+                      className="p-2 text-gray-400 hover:text-orange-400 transition-colors duration-300"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => onDeleteCar(car.id)}
+                      className="p-2 text-gray-400 hover:text-red-400 transition-colors duration-300"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Year:</span>
+                    <span className="text-white font-medium">{car.year}</span>
+                  </div>
+                  {car.licensePlate && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">License:</span>
+                      <span className="text-white font-medium">{car.licensePlate}</span>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
+          {cars.length === 0 && !isAdding && (
+            <div className="text-center py-12">
+              <div className="w-16 h-16 bg-gray-700 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Car className="w-8 h-8 text-gray-400" />
+              </div>
+              <h4 className="text-lg font-semibold text-white mb-2">No cars added yet</h4>
+              <p className="text-gray-400">Add your first car to get started</p>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
 };
 
 // Bookings Management Component
-const BookingsManagement = ({ bookings }) => {
-  const [filter, setFilter] = useState('all'); // 'all', 'inprogress', 'completed'
+// import { useState } from 'react';
+// import { motion } from 'framer-motion';
+// import { Search, Clock4, CheckCircle, Wrench, XCircle, Star, Calendar, Phone, MapPin, X, User, Car, WrenchIcon, MapPinIcon, PhoneIcon, CalendarIcon, DollarSign } from 'lucide-react';
+
+const BookingsManagement = ({ bookings, loading }) => {
+  const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedBooking, setSelectedBooking] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const filteredBookings = bookings.filter(booking => {
     const matchesSearch = booking.carName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         booking.serviceType.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         booking.mechanicName.toLowerCase().includes(searchTerm.toLowerCase());
-    
+      booking.serviceType.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      booking.mechanicName.toLowerCase().includes(searchTerm.toLowerCase());
+
     if (filter === 'all') return matchesSearch;
     if (filter === 'inprogress') return matchesSearch && booking.status !== 'completed';
     if (filter === 'completed') return matchesSearch && booking.status === 'completed';
-    
+
     return matchesSearch;
   });
+
+  console.log(bookings, "bookings pf");
 
   const getStatusIcon = (status) => {
     switch (status) {
       case 'pending':
         return <Clock4 className="w-4 h-4 text-amber-400" />;
-      case 'accepted':
+      case 'confirmed':
         return <CheckCircle className="w-4 h-4 text-green-400" />;
       case 'in-progress':
         return <Wrench className="w-4 h-4 text-blue-400" />;
       case 'completed':
         return <CheckCircle className="w-4 h-4 text-green-400" />;
-      case 'denied':
+      case 'cancelled':
         return <XCircle className="w-4 h-4 text-red-400" />;
       default:
         return <Clock4 className="w-4 h-4 text-gray-400" />;
@@ -248,18 +274,55 @@ const BookingsManagement = ({ bookings }) => {
     switch (status) {
       case 'pending':
         return 'bg-amber-500/20 text-amber-400 border-amber-500/30';
-      case 'accepted':
+      case 'confirmed':
         return 'bg-green-500/20 text-green-400 border-green-500/30';
       case 'in-progress':
         return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
       case 'completed':
         return 'bg-green-500/20 text-green-400 border-green-500/30';
-      case 'denied':
+      case 'cancelled':
         return 'bg-red-500/20 text-red-400 border-red-500/30';
       default:
         return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
     }
   };
+
+  const handleViewDetails = (booking) => {
+    setSelectedBooking(booking);
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setSelectedBooking(null);
+  };
+
+
+  const handleCancel = async () => {
+    try {
+      const res = await axiosInstance.post(`/bookings/${selectedBooking._id}/cancel`)
+      toast.success("Booking deleted successfully");
+      closeModal();
+      getBookings();
+    } catch (error) {
+      console.log(error);
+      toast.error("Something went wrong");
+    }
+  }
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-2xl font-bold text-white">My Bookings</h3>
+          <p className="text-gray-400">Track and manage your service appointments</p>
+        </div>
+        <div className="text-center py-12">
+          <div className="w-16 h-16 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading bookings...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -276,11 +339,10 @@ const BookingsManagement = ({ bookings }) => {
             <button
               key={filterType}
               onClick={() => setFilter(filterType)}
-              className={`px-4 py-2 rounded-xl font-medium transition-all duration-300 ${
-                filter === filterType
-                  ? 'bg-orange-500 text-white'
-                  : 'bg-gray-700/50 text-gray-300 hover:text-white hover:bg-gray-700'
-              }`}
+              className={`px-4 py-2 rounded-xl font-medium transition-all duration-300 ${filter === filterType
+                ? 'bg-orange-500 text-white'
+                : 'bg-gray-700/50 text-gray-300 hover:text-white hover:bg-gray-700'
+                }`}
             >
               {filterType === 'all' && 'All Bookings'}
               {filterType === 'inprogress' && 'In Progress'}
@@ -352,7 +414,10 @@ const BookingsManagement = ({ bookings }) => {
 
               {/* Actions */}
               <div className="flex space-x-3">
-                <button className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl transition-colors duration-300 text-sm font-medium">
+                <button
+                  onClick={() => handleViewDetails(booking)}
+                  className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl transition-colors duration-300 text-sm font-medium"
+                >
                   View Details
                 </button>
                 {booking.status === 'pending' && (
@@ -396,100 +461,296 @@ const BookingsManagement = ({ bookings }) => {
           </p>
         </div>
       )}
+
+      {/* Booking Details Modal */}
+      {isModalOpen && selectedBooking && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            className="bg-gray-800 rounded-2xl border border-gray-700 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-700">
+              <div>
+                <h3 className="text-xl font-bold text-white">Booking Details</h3>
+                <p className="text-gray-400 text-sm">Booking ID: {selectedBooking.id}</p>
+              </div>
+              <button
+                onClick={closeModal}
+                className="p-2 hover:bg-gray-700 rounded-xl transition-colors duration-200"
+              >
+                <X className="w-5 h-5 text-gray-400" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 space-y-6">
+              {/* Status */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  {getStatusIcon(selectedBooking.status)}
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(selectedBooking.status)}`}>
+                    {selectedBooking.status.replace('-', ' ').toUpperCase()}
+                  </span>
+                </div>
+                <div className="text-sm text-gray-400">
+                  Booked on: <span className="text-white">{selectedBooking.bookedDate}</span>
+                </div>
+              </div>
+
+              {/* Service Details */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-orange-500/20 rounded-xl flex items-center justify-center">
+                      <Car className="w-5 h-5 text-orange-400" />
+                    </div>
+                    <div>
+                      <p className="text-gray-400 text-sm">Vehicle</p>
+                      <p className="text-white font-medium">{selectedBooking.carName}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-blue-500/20 rounded-xl flex items-center justify-center">
+                      <WrenchIcon className="w-5 h-5 text-blue-400" />
+                    </div>
+                    <div>
+                      <p className="text-gray-400 text-sm">Service Type</p>
+                      <p className="text-white font-medium">{selectedBooking.serviceType}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-green-500/20 rounded-xl flex items-center justify-center">
+                      <CalendarIcon className="w-5 h-5 text-green-400" />
+                    </div>
+                    <div>
+                      <p className="text-gray-400 text-sm">Scheduled Date</p>
+                      <p className="text-white font-medium">{selectedBooking.scheduledDate}</p>
+                      <p className="text-gray-400 text-sm">{selectedBooking.scheduledTime}</p>
+                    </div>
+                  </div>
+
+                  {selectedBooking.totalPrice && (
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-purple-500/20 rounded-xl flex items-center justify-center">
+                        <DollarSign className="w-5 h-5 text-purple-400" />
+                      </div>
+                      <div>
+                        <p className="text-gray-400 text-sm">Total Price</p>
+                        <p className="text-white font-medium">₹{selectedBooking.totalPrice}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Mechanic Details */}
+              <div className="bg-gray-700/30 rounded-xl p-4">
+                <h4 className="text-lg font-semibold text-white mb-3">Mechanic Information</h4>
+                <div className="flex items-center space-x-4">
+                  <div className="w-12 h-12 bg-orange-500/20 rounded-xl flex items-center justify-center">
+                    <User className="w-6 h-6 text-orange-400" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-white font-medium">{selectedBooking.mechanicName}</p>
+                    <div className="flex items-center space-x-4 mt-1">
+                      <div className="flex items-center space-x-1">
+                        <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                        <span className="text-gray-400 text-sm">{selectedBooking.mechanicRating}</span>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <PhoneIcon className="w-4 h-4 text-gray-400" />
+                        <span className="text-gray-400 text-sm">{selectedBooking.mechanicPhone}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Location */}
+              <div className="bg-gray-700/30 rounded-xl p-4">
+                <h4 className="text-lg font-semibold text-white mb-3">Service Location</h4>
+                <div className="flex items-center space-x-3">
+                  <MapPinIcon className="w-5 h-5 text-orange-400" />
+                  <p className="text-white">{selectedBooking.location}</p>
+                </div>
+              </div>
+
+              {/* Additional Notes */}
+              {selectedBooking.instructions && (
+                <div className="bg-gray-700/30 rounded-xl p-4">
+                  <h4 className="text-lg font-semibold text-white mb-3">Additional Instructions</h4>
+                  <p className="text-gray-300">{selectedBooking.instructions}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex justify-end space-x-3 p-6 border-t border-gray-700">
+              <button
+                onClick={closeModal}
+                className="px-6 py-2 border border-gray-600 text-gray-300 hover:text-white hover:border-gray-500 rounded-xl transition-colors duration-300"
+              >
+                Close
+              </button>
+              {selectedBooking.status === 'pending' && (
+                <button
+                  onClick={handleCancel}
+                  className="px-6 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl transition-colors duration-300">
+                  Cancel Booking
+                </button>
+              )}
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 };
 
+
+
 // Main Profile Component
 const Profile = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('profile');
   const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [carsLoading, setCarsLoading] = useState(false);
+  const [bookingsLoading, setBookingsLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
   const [profileData, setProfileData] = useState({
-    name: 'John Doe',
-    email: 'john.doe@example.com',
-    phone: '+91 98765 43210',
-    profilePic: null
+    name: '',
+    email: '',
+    phone: '',
+    profilePic: ''
   });
 
-  const [cars, setCars] = useState([
-    {
-      id: 1,
-      name: 'My Daily Driver',
-      model: 'Honda City',
-      year: '2022',
-      licensePlate: 'MH01AB1234'
-    },
-    {
-      id: 2,
-      name: 'Weekend Car',
-      model: 'Hyundai Creta',
-      year: '2021',
-      licensePlate: 'MH01CD5678'
-    }
-  ]);
+  const [cars, setCars] = useState([]);
+  const [bookings, setBookings] = useState([]);
 
-  const [bookings, setBookings] = useState([
-    {
-      id: 'BK001',
-      carName: 'Honda City',
-      serviceType: 'General Service',
-      status: 'accepted',
-      bookedDate: '15 Dec 2023',
-      scheduledDate: '20 Dec 2023',
-      scheduledTime: '10:00 AM',
-      mechanicName: 'AutoCare Pro',
-      mechanicRating: 4.8,
-      mechanicPhone: '+91 98765 43210',
-      location: 'Bandra West, Mumbai'
-    },
-    {
-      id: 'BK002',
-      carName: 'Hyundai Creta',
-      serviceType: 'AC Service',
-      status: 'in-progress',
-      bookedDate: '18 Dec 2023',
-      scheduledDate: '22 Dec 2023',
-      scheduledTime: '2:00 PM',
-      mechanicName: 'Precision Auto',
-      mechanicRating: 4.6,
-      mechanicPhone: '+91 98765 43211',
-      location: 'Andheri East, Mumbai'
-    },
-    {
-      id: 'BK003',
-      carName: 'Honda City',
-      serviceType: 'Denting & Painting',
-      status: 'completed',
-      bookedDate: '10 Dec 2023',
-      scheduledDate: '15 Dec 2023',
-      scheduledTime: '11:00 AM',
-      mechanicName: 'Elite Car Service',
-      mechanicRating: 4.9,
-      mechanicPhone: '+91 98765 43212',
-      location: 'Powai, Mumbai'
+  // Check authentication and load data
+  useEffect(() => {
+    const token = localStorage.getItem('userInfo');
+    if (!token) {
+      navigate('/login');
+      return;
     }
-  ]);
+    fetchProfileData();
+  }, []);
 
-  const handleSaveProfile = (e) => {
+  // Fetch all profile data
+  const fetchProfileData = async () => {
+    try {
+      setLoading(true);
+      const [profileRes, carsRes, bookingsRes] = await Promise.all([
+        axiosInstance.get('/user/profile'),
+        axiosInstance.get('/user/cars'),
+        axiosInstance.get('/user/bookings')
+      ]);
+
+      setProfileData({
+        name: profileRes.data.name,
+        email: profileRes.data.email,
+        phone: profileRes.data.phone,
+        profilePic: profileRes.data.profilePic
+      });
+      setCars(carsRes.data);
+      setBookings(bookingsRes.data);
+    } catch (error) {
+      console.error('Error fetching profile data:', error);
+      if (error.response?.status === 401) {
+        localStorage.removeItem('userInfo');
+        navigate('/login');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle profile picture upload
+  const handleProfilePicChange = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    try {
+      setUploading(true);
+      const imageUrl = await uploadToImgBB(file);
+
+      // Update profile with new image
+      await axiosInstance.put('/user/profile', {
+        profilePic: imageUrl,
+        name: profileData.name,
+        email: profileData.email,
+        phone: profileData.phone
+      });
+
+      setProfileData(prev => ({ ...prev, profilePic: imageUrl }));
+    } catch (error) {
+      console.error('Error uploading profile picture:', error);
+      alert('Error uploading profile picture');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // Handle profile save
+  const handleSaveProfile = async (e) => {
     e.preventDefault();
-    setIsEditing(false);
-    // Here you would typically save to backend
+    try {
+      await axiosInstance.put('/user/profile', profileData);
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      alert('Error updating profile');
+    }
   };
 
-  const handleAddCar = (carData) => {
-    const newCar = {
-      id: Date.now(),
-      ...carData
-    };
-    setCars([...cars, newCar]);
+  // Car management functions
+  const handleAddCar = async (carData) => {
+    try {
+      setCarsLoading(true);
+      const response = await axiosInstance.post('/user/cars', carData);
+      setCars(prev => [...prev, response.data]);
+    } catch (error) {
+      console.error('Error adding car:', error);
+      alert('Error adding car');
+    } finally {
+      setCarsLoading(false);
+    }
   };
 
-  const handleEditCar = (carId, carData) => {
-    setCars(cars.map(car => car.id === carId ? { ...car, ...carData } : car));
+  const handleEditCar = async (carId, carData) => {
+    try {
+      setCarsLoading(true);
+      const response = await axiosInstance.put(`/user/cars/${carId}`, carData);
+      setCars(prev => prev.map(car => car.id === carId ? response.data : car));
+    } catch (error) {
+      console.error('Error updating car:', error);
+      alert('Error updating car');
+    } finally {
+      setCarsLoading(false);
+    }
   };
 
-  const handleDeleteCar = (carId) => {
-    setCars(cars.filter(car => car.id !== carId));
+  const handleDeleteCar = async (carId) => {
+    try {
+      setCarsLoading(true);
+      await axiosInstance.delete(`/user/cars/${carId}`);
+      setCars(prev => prev.filter(car => car.id !== carId));
+    } catch (error) {
+      console.error('Error deleting car:', error);
+      alert('Error deleting car');
+    } finally {
+      setCarsLoading(false);
+    }
   };
 
   const tabs = [
@@ -498,6 +759,21 @@ const Profile = () => {
     { id: 'bookings', label: 'Bookings', icon: Calendar },
     { id: 'notifications', label: 'Notifications', icon: Bell }
   ];
+
+  const handleLogout = () => {
+    localStorage.removeItem('userInfo');
+    navigate('/login');
+  };
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black text-white pt-20 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading profile...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-black text-white pt-20">
@@ -508,7 +784,9 @@ const Profile = () => {
           <p className="text-gray-400 text-lg max-w-2xl mx-auto">
             Manage your profile, vehicles, and service appointments in one place
           </p>
+
         </div>
+
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Sidebar Navigation */}
@@ -519,11 +797,10 @@ const Profile = () => {
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 font-medium ${
-                      activeTab === tab.id
-                        ? 'bg-orange-500 text-white'
-                        : 'text-gray-300 hover:text-white hover:bg-gray-800'
-                    }`}
+                    className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 font-medium ${activeTab === tab.id
+                      ? 'bg-orange-500 text-white'
+                      : 'text-gray-300 hover:text-white hover:bg-gray-800'
+                      }`}
                   >
                     <tab.icon className="w-5 h-5" />
                     <span>{tab.label}</span>
@@ -541,7 +818,10 @@ const Profile = () => {
                 <div className="space-y-8">
                   <div className="flex justify-between items-center">
                     <div>
-                      <h2 className="text-2xl font-bold text-white">Profile Information</h2>
+                      <div className='flex items-center justify-between w-full gap-4'>
+                        <h2 className="text-2xl font-bold text-white w-[300px]">Profile Information</h2>
+                        <LogOut className="w-5 h-5 cursor-pointer" title="Logout" onClick={handleLogout} />
+                      </div>
                       <p className="text-gray-400">Manage your personal details</p>
                     </div>
                     <button
@@ -558,7 +838,7 @@ const Profile = () => {
                     <div className="lg:col-span-1">
                       <div className="text-center">
                         <div className="relative inline-block">
-                          <div className="w-32 h-32 bg-gray-700 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                          <div className="w-32 h-32 bg-gray-700 rounded-2xl flex items-center justify-center mx-auto mb-4 overflow-hidden">
                             {profileData.profilePic ? (
                               <img
                                 src={profileData.profilePic}
@@ -570,13 +850,24 @@ const Profile = () => {
                             )}
                           </div>
                           {isEditing && (
-                            <button className="absolute bottom-2 right-2 bg-orange-500 hover:bg-orange-600 text-white p-2 rounded-full transition-colors duration-300">
-                              <Edit3 className="w-4 h-4" />
-                            </button>
+                            <label className="absolute bottom-2 right-2 bg-orange-500 hover:bg-orange-600 text-white p-2 rounded-full transition-colors duration-300 cursor-pointer">
+                              {uploading ? (
+                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                              ) : (
+                                <Edit3 className="w-4 h-4" />
+                              )}
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={handleProfilePicChange}
+                                className="hidden"
+                                disabled={uploading}
+                              />
+                            </label>
                           )}
                         </div>
                         <p className="text-gray-400 text-sm">
-                          Click on edit to update profile picture
+                          {isEditing ? 'Click on edit icon to update profile picture' : 'Edit profile to update picture'}
                         </p>
                       </div>
                     </div>
@@ -654,12 +945,13 @@ const Profile = () => {
                   onAddCar={handleAddCar}
                   onEditCar={handleEditCar}
                   onDeleteCar={handleDeleteCar}
+                  loading={carsLoading}
                 />
               )}
 
               {/* Bookings Tab */}
               {activeTab === 'bookings' && (
-                <BookingsManagement bookings={bookings} />
+                <BookingsManagement bookings={bookings} loading={bookingsLoading} />
               )}
 
               {/* Notifications Tab */}
@@ -669,7 +961,7 @@ const Profile = () => {
                     <h3 className="text-2xl font-bold text-white">Notifications</h3>
                     <p className="text-gray-400">Manage your notification preferences</p>
                   </div>
-                  
+
                   <div className="bg-gray-800/50 rounded-2xl p-6 border border-gray-700">
                     <div className="text-center py-12">
                       <div className="w-16 h-16 bg-gray-700 rounded-2xl flex items-center justify-center mx-auto mb-4">

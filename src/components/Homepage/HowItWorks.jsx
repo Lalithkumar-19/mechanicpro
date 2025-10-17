@@ -2,6 +2,7 @@ import React from 'react';
 import { Search, Calendar, Clock, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
+import { useNavigate } from 'react-router-dom';
 
 
 const StepCard = ({ step, title, description, icon, index }) => {
@@ -9,6 +10,7 @@ const StepCard = ({ step, title, description, icon, index }) => {
     triggerOnce: true,
     threshold: 0.1,
   });
+
 
   return (
     <motion.div
@@ -41,6 +43,7 @@ const StepCard = ({ step, title, description, icon, index }) => {
 };
 
 const HowItWorks = () => {
+  const navigate = useNavigate();
   const steps = [
     {
       step: "1",
@@ -170,7 +173,9 @@ const HowItWorks = () => {
           <h3 className="text-3xl font-bold text-white mb-6">
             Ready to Get Started?
           </h3>
-          <button className="cursor-pointer  group relative px-8 py-4 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-orange-500/25 overflow-hidden">
+          <button
+            onClick={() => navigate("/find-mechanics")}
+            className="cursor-pointer  group relative px-8 py-4 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-orange-500/25 overflow-hidden">
             <span className="relative z-10 flex items-center justify-center space-x-2 cursor-pointer">
               <Calendar className="w-5 h-5" />
               <span>Book Your First Service Now</span>

@@ -1,14 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import {
   Wrench, Calendar, Clock, CheckCircle, XCircle,
   Settings, User, Bell, Package, BarChart3, MessageCircle,
   MapPin, Phone, Mail, Car, Filter, Search, Star,
   TrendingUp, Users, DollarSign, AlertCircle, Edit3,
-  Plus, Truck, Shield, Zap, Sparkles, Eye, ChevronLeft, ChevronRight, X
+  Plus, Truck, Shield, Zap, Sparkles, Eye, ChevronLeft, ChevronRight, X,
+  LogOut
 } from 'lucide-react';
 
+import mechanicaxios from '../utils/mechanicaxios';
+import { uploadToImgBB } from '../utils/uploadtoImbb';
+
 const MechanicDashboard = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const [notifications, setNotifications] = useState([]);
   const [shopStatus, setShopStatus] = useState(true);
@@ -16,6 +22,7 @@ const MechanicDashboard = () => {
   const [sparePartRequests, setSparePartRequests] = useState([]);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [showSparePartForm, setShowSparePartForm] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // New state variables for functionality
   const [searchQuery, setSearchQuery] = useState('');
@@ -23,12 +30,13 @@ const MechanicDashboard = () => {
   const [currentBookingPage, setCurrentBookingPage] = useState(1);
   const [currentSparePartPage, setCurrentSparePartPage] = useState(1);
   const [profileData, setProfileData] = useState({
-    name: 'Raj Mechanic',
-    shopName: 'AutoCare Pro Center',
-    email: 'contact@autocarepro.com',
-    phone: '+91 98765 43210',
-    address: 'Shop No. 12, Linking Road, Bandra West, Mumbai',
-    profilePic: null
+    name: '',
+    shopName: '',
+    email: '',
+    phone: '',
+    address: '',
+    profilePic: null,
+    isActive: true
   });
   const [editingProfile, setEditingProfile] = useState(false);
   const [newSparePart, setNewSparePart] = useState({
@@ -38,179 +46,78 @@ const MechanicDashboard = () => {
     urgency: 'medium'
   });
 
+  const [sparePartSearch, setSparePartSearch] = useState('');
   const itemsPerPage = 10;
 
-  // Enhanced sample data
+  // Check authentication on component mount
   useEffect(() => {
-    const sampleBookings = [
-      {
-        id: 'BK001',
-        customerName: 'Raj Sharma',
-        customerPhone: '+91 98765 43210',
-        vehicle: {
-          model: 'Honda City',
-          year: '2022',
-          registration: 'MH01AB1234'
-        },
-        serviceType: 'General Service',
-        bookingType: 'scheduled',
-        date: '2024-01-15',
-        time: '10:00 AM',
-        status: 'pending',
-        amount: 3999,
-        createdAt: new Date(),
-        notes: 'Customer requested AC check as well'
-      },
-      {
-        id: 'BK002',
-        customerName: 'Priya Patel',
-        customerPhone: '+91 98765 43211',
-        vehicle: {
-          model: 'Hyundai Creta',
-          year: '2021',
-          registration: 'MH01CD5678'
-        },
-        serviceType: 'AC Service',
-        bookingType: 'instant',
-        date: '2024-01-15',
-        time: '11:30 AM',
-        status: 'confirmed',
-        amount: 2499,
-        createdAt: new Date(),
-        notes: 'Needs urgent AC repair'
-      },
-      {
-        id: 'BK003',
-        customerName: 'Amit Kumar',
-        customerPhone: '+91 98765 43212',
-        vehicle: {
-          model: 'Maruti Swift',
-          year: '2020',
-          registration: 'MH01EF9012'
-        },
-        serviceType: 'Brake Service',
-        bookingType: 'scheduled',
-        date: '2024-01-16',
-        time: '02:00 PM',
-        status: 'in-progress',
-        amount: 4499,
-        createdAt: new Date(),
-        notes: 'Front brake pads replacement needed'
-      },
-      {
-        id: 'BK004',
-        customerName: 'Sneha Reddy',
-        customerPhone: '+91 98765 43213',
-        vehicle: {
-          model: 'Toyota Innova',
-          year: '2019',
-          registration: 'MH01GH3456'
-        },
-        serviceType: 'Engine Repair',
-        bookingType: 'scheduled',
-        date: '2024-01-16',
-        time: '09:00 AM',
-        status: 'completed',
-        amount: 8999,
-        createdAt: new Date(),
-        notes: 'Engine overheating issue resolved'
-      },
-      {
-        id: 'BK005',
-        customerName: 'Vikram Singh',
-        customerPhone: '+91 98765 43214',
-        vehicle: {
-          model: 'Ford EcoSport',
-          year: '2020',
-          registration: 'MH01IJ7890'
-        },
-        serviceType: 'Oil Change',
-        bookingType: 'instant',
-        date: '2024-01-17',
-        time: '03:00 PM',
-        status: 'pending',
-        amount: 1999,
-        createdAt: new Date(),
-        notes: 'Synthetic oil required'
-      }
-    ];
+    const token = localStorage.getItem('mechanic_token');
+    const mechanicInfo = localStorage.getItem('mechanic_info');
 
-    const sampleSpareParts = [
-      {
-        id: 'SP001',
-        serviceId: 'BK003',
-        partName: 'Brake Pads Set',
-        carModel: 'Maruti Swift',
-        quantity: 2,
-        status: 'requested',
-        requestedAt: new Date(),
-        urgency: 'high'
-      },
-      {
-        id: 'SP002',
-        serviceId: 'BK002',
-        partName: 'AC Compressor',
-        carModel: 'Hyundai Creta',
-        quantity: 1,
-        status: 'approved',
-        requestedAt: new Date(Date.now() - 86400000),
-        urgency: 'medium'
-      },
-      {
-        id: 'SP003',
-        serviceId: 'BK004',
-        partName: 'Engine Oil Filter',
-        carModel: 'Toyota Innova',
-        quantity: 1,
-        status: 'delivered',
-        requestedAt: new Date(Date.now() - 172800000),
-        urgency: 'low'
-      }
-    ];
+    if (!token || !mechanicInfo) {
+      navigate('/mechanic-login');
+      return;
+    }
 
-    const sampleNotifications = [
-      {
-        id: 1,
-        message: 'New booking received from Raj Sharma',
-        type: 'booking',
-        timestamp: new Date(Date.now() - 300000),
-        read: false
-      },
-      {
-        id: 2,
-        message: 'Spare part request approved',
-        type: 'spare-part',
-        timestamp: new Date(Date.now() - 1800000),
-        read: false
-      },
-      {
-        id: 3,
-        message: 'Service completed for Toyota Innova',
-        type: 'service',
-        timestamp: new Date(Date.now() - 3600000),
-        read: true
-      },
-      {
-        id: 4,
-        message: 'New customer review received',
-        type: 'review',
-        timestamp: new Date(Date.now() - 7200000),
-        read: true
-      }
-    ];
-
-    setBookings(sampleBookings);
-    setSparePartRequests(sampleSpareParts);
-    setNotifications(sampleNotifications);
+    fetchDashboardData();
   }, []);
+
+  // Fetch all data from backend
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      const [profileRes, statsRes, bookingsRes, sparePartsRes] = await Promise.all([
+        mechanicaxios.get('/profile'),
+        mechanicaxios.get('/dashboard-stats'),
+        mechanicaxios.get('/bookings?page=1&limit=100'),
+        mechanicaxios.get('/spare-parts?page=1&limit=100')
+      ]);
+
+      setProfileData(profileRes.data);
+      setShopStatus(profileRes.data.isActive);
+      setBookings(bookingsRes.data.bookings || []);
+      setSparePartRequests(sparePartsRes.data.spareParts || []);
+
+      // Set notifications based on recent activities
+      const recentNotifications = [];
+      if (bookingsRes.data.bookings?.length > 0) {
+        recentNotifications.push({
+          id: 1,
+          message: `You have ${bookingsRes.data.bookings.length} active bookings`,
+          type: 'booking',
+          timestamp: new Date(),
+          read: false
+        });
+      }
+      if (sparePartsRes.data.spareParts?.length > 0) {
+        const pendingParts = sparePartsRes.data.spareParts.filter(part => part.status === 'pending').length;
+        if (pendingParts > 0) {
+          recentNotifications.push({
+            id: 2,
+            message: `You have ${pendingParts} pending spare part requests`,
+            type: 'spare-part',
+            timestamp: new Date(),
+            read: false
+          });
+        }
+      }
+      setNotifications(recentNotifications);
+
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+      alert('Error loading dashboard data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Filter and search functionality for bookings
   const filteredBookings = bookings.filter(booking => {
     const matchesSearch =
-      booking.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      booking.vehicle.model.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      booking.serviceType.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      booking.id.toLowerCase().includes(searchQuery.toLowerCase());
+      booking.customerName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      booking.vehicle?.model?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      booking.serviceType?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      booking.id?.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesStatus = statusFilter === 'all' || booking.status === statusFilter;
 
@@ -224,12 +131,11 @@ const MechanicDashboard = () => {
     currentBookingPage * itemsPerPage
   );
 
-  // Search functionality for spare parts
-  const [sparePartSearch, setSparePartSearch] = useState('');
+  // Filter for spare parts
   const filteredSpareParts = sparePartRequests.filter(part =>
-    part.partName.toLowerCase().includes(sparePartSearch.toLowerCase()) ||
-    part.carModel.toLowerCase().includes(sparePartSearch.toLowerCase()) ||
-    part.serviceId.toLowerCase().includes(sparePartSearch.toLowerCase())
+    part.partName?.toLowerCase().includes(sparePartSearch.toLowerCase()) ||
+    part.carModel?.toLowerCase().includes(sparePartSearch.toLowerCase()) ||
+    part.serviceId?.toLowerCase().includes(sparePartSearch.toLowerCase())
   );
 
   // Pagination for spare parts
@@ -250,64 +156,75 @@ const MechanicDashboard = () => {
     setNotifications(prev => [notification, ...prev]);
   };
 
-  // Enhanced booking status update with all status options
-  const updateBookingStatus = (bookingId, newStatus) => {
-    setBookings(prev =>
-      prev.map(booking =>
-        booking.id === bookingId ? { ...booking, status: newStatus } : booking
-      )
-    );
+  // Update booking status with API call
+  const updateBookingStatus = async (bookingId, newStatus) => {
+    try {
+      await mechanicaxios.put(`/bookings/${bookingId}/status`, {
+        status: newStatus
+      });
 
-    const statusMessages = {
-      'pending': 'Booking set to pending',
-      'confirmed': 'Booking confirmed',
-      'in-progress': 'Service started',
-      'completed': 'Service completed'
-    };
+      setBookings(prev =>
+        prev.map(booking =>
+          booking.id === bookingId ? { ...booking, status: newStatus } : booking
+        )
+      );
 
-    addNotification(statusMessages[newStatus] || 'Status updated', 'booking');
-  };
+      const statusMessages = {
+        'pending': 'Booking set to pending',
+        'confirmed': 'Booking confirmed',
+        'in-progress': 'Service started',
+        'completed': 'Service completed',
+        'cancelled': 'Booking cancelled'
+      };
 
-  const handleBookingAction = (bookingId, action) => {
-    if (action === 'accept') {
-      updateBookingStatus(bookingId, 'confirmed');
-    } else if (action === 'decline') {
-      updateBookingStatus(bookingId, 'pending');
+      addNotification(statusMessages[newStatus] || 'Status updated', 'booking');
+    } catch (error) {
+      console.error('Error updating booking status:', error);
+      alert('Error updating booking status');
     }
   };
 
-  const toggleShopStatus = () => {
-    setShopStatus(!shopStatus);
-    addNotification(`Shop ${!shopStatus ? 'opened' : 'closed'}`, 'shop');
+  // Toggle shop status with API call
+  const toggleShopStatus = async () => {
+    try {
+      const response = await mechanicaxios.put('/shop-status', {
+        isActive: !shopStatus
+      });
+
+      setShopStatus(response.data.isActive);
+      addNotification(`Shop ${response.data.isActive ? 'opened' : 'closed'}`, 'shop');
+    } catch (error) {
+      console.error('Error updating shop status:', error);
+      alert('Error updating shop status');
+    }
   };
 
-  // New spare part request functionality
-  const handleNewSparePartRequest = () => {
+  // Create new spare part request
+  const handleNewSparePartRequest = async () => {
     if (!newSparePart.partName || !newSparePart.carModel) {
       alert('Please fill in all required fields');
       return;
     }
 
-    const newRequest = {
-      id: `SP${Date.now()}`,
-      serviceId: 'N/A',
-      partName: newSparePart.partName,
-      carModel: newSparePart.carModel,
-      quantity: newSparePart.quantity,
-      status: 'requested',
-      requestedAt: new Date(),
-      urgency: newSparePart.urgency
-    };
+    try {
+      const response = await mechanicaxios.post('/spare-parts', {
+        ...newSparePart,
+        serviceId: selectedBooking ? selectedBooking.id : 'N/A'
+      });
 
-    setSparePartRequests(prev => [newRequest, ...prev]);
-    setShowSparePartForm(false);
-    setNewSparePart({
-      partName: '',
-      carModel: '',
-      quantity: 1,
-      urgency: 'medium'
-    });
-    addNotification('New spare part request submitted', 'spare-part');
+      setSparePartRequests(prev => [response.data, ...prev]);
+      setShowSparePartForm(false);
+      setNewSparePart({
+        partName: '',
+        carModel: '',
+        quantity: 1,
+        urgency: 'medium'
+      });
+      addNotification('New spare part request submitted', 'spare-part');
+    } catch (error) {
+      console.error('Error creating spare part request:', error);
+      alert('Error creating spare part request');
+    }
   };
 
   // Profile edit functionality
@@ -315,22 +232,73 @@ const MechanicDashboard = () => {
     setEditingProfile(true);
   };
 
-  const handleProfileSave = () => {
-    setEditingProfile(false);
-    addNotification('Profile updated successfully', 'profile');
+  const handleProfileSave = async () => {
+    try {
+      // Parse address back to components for API
+      const addressParts = profileData.address.split(', ');
+      const response = await mechanicaxios.put('/profile', {
+        name: profileData.shopName,
+        email: profileData.email,
+        phone: profileData.phone,
+        streetaddress: addressParts[0],
+        city: addressParts[1],
+        state: addressParts[2]?.split(' ')[0] || '',
+        zip: addressParts[2]?.split(' ')[1] || '',
+        profile: profileData.profilePic,
+      });
+      console.log(response, "f")
+      if (response.status === 200) {
+        setEditingProfile(false);
+        addNotification('Profile updated successfully', 'profile');
+        const mechanicInfo = JSON.parse(localStorage.getItem('mechanic_info'));
+        mechanicInfo.name = profileData.name;
+        localStorage.setItem('mechanic_info', JSON.stringify(mechanicInfo));
+      }
+      // Update localStorage with new name
+
+
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      alert('Error updating profile');
+    }
   };
 
-  const handleProfilePicChange = (event) => {
+  const handleProfilePicChange = async (event) => {
     const file = event.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setProfileData(prev => ({
-          ...prev,
-          profilePic: e.target.result
-        }));
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    try {
+      // Show loading state
+      setLoading(true);
+
+      // Upload to imgBB
+      const imageUrl = await uploadToImgBB(file);
+
+      // Update profile data with the new image URL
+      setProfileData(prev => ({
+        ...prev,
+        profilePic: imageUrl
+      }));
+
+      // Update profile in backend
+      await mechanicaxios.put('/profile', {
+        profile: imageUrl,
+        name: profileData.shopName,
+        email: profileData.email,
+        phone: profileData.phone,
+        streetaddress: profileData.address.split(', ')[0],
+        city: profileData.address.split(', ')[1],
+        state: profileData.address.split(', ')[2]?.split(' ')[0] || '',
+        zip: profileData.address.split(', ')[2]?.split(' ')[1] || ''
+      });
+
+      addNotification('Profile picture updated successfully', 'profile');
+
+    } catch (error) {
+      console.error('Error uploading profile picture:', error);
+      alert('Error uploading profile picture');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -342,12 +310,19 @@ const MechanicDashboard = () => {
   // Get recent notifications (last 10)
   const recentNotifications = notifications.slice(0, 10);
 
+  // Logout function
+  const handleLogout = () => {
+    localStorage.removeItem('mechanic_token');
+    localStorage.removeItem('mechanic_info');
+    navigate('/mechanic-login');
+  };
+
   const dashboardStats = {
     totalServices: bookings.length,
     pendingRequests: bookings.filter(b => b.status === 'pending').length,
     inProgress: bookings.filter(b => b.status === 'in-progress').length,
     completed: bookings.filter(b => b.status === 'completed').length,
-    pendingSpareParts: sparePartRequests.filter(s => s.status === 'requested').length
+    pendingSpareParts: sparePartRequests.filter(s => s.status === 'pending').length
   };
 
   const tabs = [
@@ -364,7 +339,7 @@ const MechanicDashboard = () => {
       case 'confirmed': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
       case 'in-progress': return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
       case 'completed': return 'bg-green-500/20 text-green-400 border-green-500/30';
-      case 'declined': return 'bg-red-500/20 text-red-400 border-red-500/30';
+      case 'cancelled': return 'bg-red-500/20 text-red-400 border-red-500/30';
       default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
     }
   };
@@ -375,10 +350,23 @@ const MechanicDashboard = () => {
       case 'confirmed': return <CheckCircle className="w-4 h-4" />;
       case 'in-progress': return <Wrench className="w-4 h-4" />;
       case 'completed': return <CheckCircle className="w-4 h-4" />;
-      case 'declined': return <XCircle className="w-4 h-4" />;
+      case 'cancelled': return <XCircle className="w-4 h-4" />;
       default: return <Clock className="w-4 h-4" />;
     }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const mechanicInfo = JSON.parse(localStorage.getItem('mechanic_info') || '{}');
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -388,11 +376,11 @@ const MechanicDashboard = () => {
           <div className="flex items-center justify-between py-4">
             <div className="flex items-center space-x-4">
               <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center">
-               <img src='/logo.png' alt='logo' />
+                <img src='/logo.png' alt='logo' />
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-white">MechanicPro Dashboard</h1>
-                <p className="text-gray-400 text-sm">AutoCare Pro Center</p>
+                <p className="text-gray-400 text-sm">{profileData.shopName || mechanicInfo.name}</p>
               </div>
             </div>
 
@@ -427,9 +415,18 @@ const MechanicDashboard = () => {
                 )}
               </button>
 
+              {/* Logout Button */}
+              <button
+                onClick={handleLogout}
+                className="flex items-center space-x-2 text-gray-300 hover:text-white transition-colors duration-300"
+                title="Logout"
+              >
+                <LogOut className="w-5 h-5" />
+              </button>
+
               {/* Profile */}
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center overflow-hidden">
+              <div className="relative">
+                <div className="w-16 h-16 bg-orange-500/20 rounded-xl flex items-center justify-center overflow-hidden">
                   {profileData.profilePic ? (
                     <img
                       src={profileData.profilePic}
@@ -437,13 +434,25 @@ const MechanicDashboard = () => {
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <User className="w-5 h-5 text-gray-400" />
+                    <User className="w-8 h-8 text-orange-400" />
                   )}
                 </div>
-                <div className="hidden md:block">
-                  <p className="text-white font-medium">{profileData.name}</p>
-                  <p className="text-gray-400 text-sm">{profileData.shopName}</p>
-                </div>
+                {editingProfile && (
+                  <label className="absolute -bottom-1 -right-1 w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center cursor-pointer hover:bg-orange-600 transition-colors duration-300">
+                    {loading ? (
+                      <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    ) : (
+                      <Edit3 className="w-3 h-3 text-white" />
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleProfilePicChange}
+                      className="hidden"
+                      disabled={loading}
+                    />
+                  </label>
+                )}
               </div>
             </div>
           </div>
@@ -460,7 +469,7 @@ const MechanicDashboard = () => {
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`w-full cursor-pointerw flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 font-medium ${activeTab === tab.id
+                    className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 font-medium ${activeTab === tab.id
                       ? 'bg-orange-500 text-white'
                       : 'text-gray-300 hover:text-white hover:bg-gray-800'
                       }`}
@@ -510,7 +519,7 @@ const MechanicDashboard = () => {
 
                   {/* Stats Grid */}
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <div className="bg-gray-800rounded-2xl p-6 border border-gray-700">
+                    <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-gray-400 text-sm">Total Services</p>
@@ -522,7 +531,7 @@ const MechanicDashboard = () => {
                       </div>
                     </div>
 
-                    <div className="bg-gray-800rounded-2xl p-6 border border-gray-700">
+                    <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-gray-400 text-sm">Pending Requests</p>
@@ -534,7 +543,7 @@ const MechanicDashboard = () => {
                       </div>
                     </div>
 
-                    <div className="bg-gray-800rounded-2xl p-6 border border-gray-700">
+                    <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-gray-400 text-sm">In Progress</p>
@@ -546,7 +555,7 @@ const MechanicDashboard = () => {
                       </div>
                     </div>
 
-                    <div className="bg-gray-800rounded-2xl p-6 border border-gray-700">
+                    <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-gray-400 text-sm">Spare Parts</p>
@@ -560,7 +569,7 @@ const MechanicDashboard = () => {
                   </div>
 
                   {/* Recent Bookings */}
-                  <div className="bg-gray-800rounded-2xl p-6 border border-gray-700">
+                  <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
                     <div className="flex justify-between items-center mb-6">
                       <h3 className="text-xl font-semibold text-white">Recent Bookings</h3>
                       <button
@@ -579,17 +588,23 @@ const MechanicDashboard = () => {
                             </div>
                             <div>
                               <h4 className="text-white font-semibold">{booking.customerName}</h4>
-                              <p className="text-gray-400 text-sm">{booking.vehicle.model} • {booking.serviceType}</p>
+                              <p className="text-gray-400 text-sm">{booking.vehicle?.model} • {booking.serviceType}</p>
                             </div>
                           </div>
                           <div className="flex items-center space-x-4">
                             <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(booking.status)}`}>
-                              {booking.status.replace('-', ' ')}
+                              {booking.status?.replace('-', ' ')}
                             </span>
                             <span className="text-orange-400 font-semibold">₹{booking.amount}</span>
                           </div>
                         </div>
                       ))}
+                      {bookings.length === 0 && (
+                        <div className="text-center py-8 text-gray-400">
+                          <Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                          <p>No bookings found</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </motion.div>
@@ -615,106 +630,119 @@ const MechanicDashboard = () => {
                           placeholder="Search bookings..."
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
-                          className="pl-10 pr-4 py-2 bg-gray-800border border-gray-700 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                          className="pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
                         />
                       </div>
                       <select
                         value={statusFilter}
                         onChange={(e) => setStatusFilter(e.target.value)}
-                        className="px-4 py-2 bg-gray-800 border cursor-pointer rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
                       >
-                        <option value="all" className='cursor-pointer' >All Status</option>
-                        <option value="pending" className='cursor-pointer' >Pending</option>
-                        <option value="confirmed" className='cursor-pointer' >Confirmed</option>
-                        <option value="in-progress" className='cursor-pointer' >In Progress</option>
-                        <option value="completed" className='cursor-pointer' >Completed</option>
+                        <option value="all">All Status</option>
+                        <option value="pending">Pending</option>
+                        <option value="confirmed">Confirmed</option>
+                        <option value="in-progress">In Progress</option>
+                        <option value="completed">Completed</option>
+                        <option value="cancelled">Cancelled</option>
                       </select>
                     </div>
                   </div>
 
                   <div className="space-y-4">
-                    {paginatedBookings.map((booking) => (
-                      <div key={booking.id} className="bg-gray-800rounded-2xl p-6 border border-gray-700 hover:border-orange-500/40 transition-all duration-300">
-                        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
-                          {/* Booking Info */}
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-4 mb-4">
-                              <div className="flex items-center space-x-2">
-                                {getStatusIcon(booking.status)}
-                                <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(booking.status)}`}>
-                                  {booking.status.replace('-', ' ').toUpperCase()}
+                    {paginatedBookings.length > 0 ? (
+                      paginatedBookings.map((booking) => (
+                        <div key={booking.id} className="bg-gray-800 rounded-2xl p-6 border border-gray-700 hover:border-orange-500/40 transition-all duration-300">
+                          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
+                            {/* Booking Info */}
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-4 mb-4">
+                                <div className="flex items-center space-x-2">
+                                  {getStatusIcon(booking.status)}
+                                  <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(booking.status)}`}>
+                                    {booking.status?.replace('-', ' ').toUpperCase()}
+                                  </span>
+                                </div>
+                                <span className="text-gray-400 text-sm">ID: {booking.id}</span>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                <div>
+                                  <p className="text-gray-400 text-sm">Customer</p>
+                                  <p className="text-white font-medium">{booking.customerName}</p>
+                                  <p className="text-gray-400 text-sm">{booking.customerPhone}</p>
+                                </div>
+                                <div>
+                                  <p className="text-gray-400 text-sm">Vehicle</p>
+                                  <p className="text-white font-medium">{booking.vehicle?.model}</p>
+                                  <p className="text-gray-400 text-sm">{booking.vehicle?.registration}</p>
+                                </div>
+                                <div>
+                                  <p className="text-gray-400 text-sm">Service</p>
+                                  <p className="text-white font-medium">{booking.serviceType}</p>
+                                  <p className="text-gray-400 text-sm">{booking.bookingType}</p>
+                                </div>
+                                <div>
+                                  <p className="text-gray-400 text-sm">Schedule</p>
+                                  <p className="text-white font-medium">{booking.date}</p>
+                                  <p className="text-gray-400 text-sm">{booking.time}</p>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex flex-col space-y-2">
+                              <div className="flex space-x-2">
+                                {/* Status Update Dropdown */}
+                                <select
+                                  value={booking.status}
+                                  onChange={(e) => updateBookingStatus(booking.id, e.target.value)}
+                                  className="bg-gray-700 border border-gray-600 text-white px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                >
+                                  <option value="pending">Pending</option>
+                                  <option value="confirmed">Confirmed</option>
+                                  <option value="in-progress">In Progress</option>
+                                  <option value="completed">Completed</option>
+                                  <option value="cancelled">Cancelled</option>
+                                </select>
+
+                                <button
+                                  onClick={() => setSelectedBooking(booking)}
+                                  className="flex items-center space-x-1 border border-gray-600 text-gray-300 hover:text-white hover:border-gray-500 px-3 py-2 rounded-lg transition-colors duration-300 text-sm font-medium"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                  <span>Details</span>
+                                </button>
+                              </div>
+
+                              <div className="flex space-x-2">
+                                <button
+                                  onClick={() => {
+                                    setSelectedBooking(booking);
+                                    setShowSparePartForm(true);
+                                  }}
+                                  className="flex items-center space-x-1 border border-gray-600 text-gray-300 hover:text-white hover:border-gray-500 px-3 py-2 rounded-lg transition-colors duration-300 text-sm font-medium"
+                                >
+                                  <Package className="w-4 h-4" />
+                                  <span>Request Parts</span>
+                                </button>
+                              </div>
+
+                              <div className="text-right">
+                                <span className="text-orange-400 font-bold text-lg">
+                                  ₹{booking.amount}
                                 </span>
                               </div>
-                              <span className="text-gray-400 text-sm">ID: {booking.id}</span>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                              <div>
-                                <p className="text-gray-400 text-sm">Customer</p>
-                                <p className="text-white font-medium">{booking.customerName}</p>
-                                <p className="text-gray-400 text-sm">{booking.customerPhone}</p>
-                              </div>
-                              <div>
-                                <p className="text-gray-400 text-sm">Vehicle</p>
-                                <p className="text-white font-medium">{booking.vehicle.model}</p>
-                                <p className="text-gray-400 text-sm">{booking.vehicle.registration}</p>
-                              </div>
-                              <div>
-                                <p className="text-gray-400 text-sm">Service</p>
-                                <p className="text-white font-medium">{booking.serviceType}</p>
-                                <p className="text-gray-400 text-sm">{booking.bookingType}</p>
-                              </div>
-                              <div>
-                                <p className="text-gray-400 text-sm">Schedule</p>
-                                <p className="text-white font-medium">{booking.date}</p>
-                                <p className="text-gray-400 text-sm">{booking.time}</p>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Actions */}
-                          <div className="flex flex-col space-y-2">
-                            <div className="flex space-x-2">
-                              {/* Status Update Dropdown */}
-                              <select
-                                value={booking.status}
-                                onChange={(e) => updateBookingStatus(booking.id, e.target.value)}
-                                className="bg-gray-700 border border-gray-600 text-white px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
-                              >
-                                <option value="pending">Pending</option>
-                                <option value="confirmed">Confirmed</option>
-                                <option value="in-progress">In Progress</option>
-                                <option value="completed">Completed</option>
-                              </select>
-
-                              <button
-                                onClick={() => setSelectedBooking(booking)}
-                                className="flex items-center space-x-1 border border-gray-600 text-gray-300 hover:text-white hover:border-gray-500 px-3 py-2 rounded-lg transition-colors duration-300 text-sm font-medium"
-                              >
-                                <Eye className="w-4 h-4" />
-                                <span>Details</span>
-                              </button>
-                            </div>
-
-                            <div className="flex space-x-2">
-                              <button
-                                onClick={() => setShowSparePartForm(true)}
-                                className="flex items-center space-x-1 border border-gray-600 text-gray-300 hover:text-white hover:border-gray-500 px-3 py-2 rounded-lg transition-colors duration-300 text-sm font-medium"
-                              >
-                                <Package className="w-4 h-4" />
-                                <span>Request Parts</span>
-                              </button>
-                            </div>
-
-                            <div className="text-right">
-                              <span className="text-orange-400 font-bold text-lg">
-                                ₹{booking.amount}
-                              </span>
                             </div>
                           </div>
                         </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-12 text-gray-400">
+                        <Calendar className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                        <p className="text-lg">No bookings found</p>
+                        <p className="text-sm">When you receive bookings, they will appear here.</p>
                       </div>
-                    ))}
+                    )}
                   </div>
 
                   {/* Pagination */}
@@ -723,7 +751,7 @@ const MechanicDashboard = () => {
                       <button
                         onClick={() => setCurrentBookingPage(prev => Math.max(prev - 1, 1))}
                         disabled={currentBookingPage === 1}
-                        className="flex items-center space-x-2 px-4 py-2 bg-gray-800border border-gray-700 rounded-xl text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-700/50 transition-colors duration-300"
+                        className="flex items-center space-x-2 px-4 py-2 bg-gray-800 border border-gray-700 rounded-xl text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-700/50 transition-colors duration-300"
                       >
                         <ChevronLeft className="w-4 h-4" />
                         <span>Previous</span>
@@ -736,7 +764,7 @@ const MechanicDashboard = () => {
                       <button
                         onClick={() => setCurrentBookingPage(prev => Math.min(prev + 1, totalBookingPages))}
                         disabled={currentBookingPage === totalBookingPages}
-                        className="flex items-center space-x-2 px-4 py-2 bg-gray-800border border-gray-700 rounded-xl text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-700/50 transition-colors duration-300"
+                        className="flex items-center space-x-2 px-4 py-2 bg-gray-800 border border-gray-700 rounded-xl text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-700/50 transition-colors duration-300"
                       >
                         <span>Next</span>
                         <ChevronRight className="w-4 h-4" />
@@ -766,7 +794,7 @@ const MechanicDashboard = () => {
                           placeholder="Search parts..."
                           value={sparePartSearch}
                           onChange={(e) => setSparePartSearch(e.target.value)}
-                          className="pl-10 pr-4 py-2 bg-gray-800border border-gray-700 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                          className="pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
                         />
                       </div>
                       <button
@@ -780,43 +808,51 @@ const MechanicDashboard = () => {
                   </div>
 
                   <div className="grid grid-cols-1 gap-6">
-                    {paginatedSpareParts.map((request) => (
-                      <div key={request.id} className="bg-gray-800rounded-2xl p-6 border border-gray-700">
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 bg-purple-500/20 rounded-xl flex items-center justify-center">
-                              <Package className="w-5 h-5 text-purple-400" />
+                    {paginatedSpareParts.length > 0 ? (
+                      paginatedSpareParts.map((request) => (
+                        <div key={request.id} className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-10 h-10 bg-purple-500/20 rounded-xl flex items-center justify-center">
+                                <Package className="w-5 h-5 text-purple-400" />
+                              </div>
+                              <div>
+                                <h3 className="text-white font-semibold">{request.partName}</h3>
+                                <p className="text-gray-400 text-sm">For {request.carModel}</p>
+                              </div>
+                            </div>
+                            <span className={`px-3 py-1 rounded-full text-sm font-medium ${request.status === 'pending' ? 'bg-amber-500/20 text-amber-400' :
+                              request.status === 'approved' ? 'bg-blue-500/20 text-blue-400' :
+                                request.status === 'delivered' ? 'bg-green-500/20 text-green-400' :
+                                  'bg-gray-500/20 text-gray-400'
+                              }`}>
+                              {request.status?.toUpperCase()}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                            <div>
+                              <span className="text-gray-400">Service ID:</span>
+                              <span className="text-white ml-2">{request.serviceId}</span>
                             </div>
                             <div>
-                              <h3 className="text-white font-semibold">{request.partName}</h3>
-                              <p className="text-gray-400 text-sm">For {request.carModel}</p>
+                              <span className="text-gray-400">Quantity:</span>
+                              <span className="text-white ml-2">{request.quantity}</span>
+                            </div>
+                            <div>
+                              <span className="text-gray-400">Requested:</span>
+                              <span className="text-white ml-2">{new Date(request.requestedAt).toLocaleDateString()}</span>
                             </div>
                           </div>
-                          <span className={`px-3 py-1 rounded-full text-sm font-medium ${request.status === 'requested' ? 'bg-amber-500/20 text-amber-400' :
-                            request.status === 'approved' ? 'bg-blue-500/20 text-blue-400' :
-                              request.status === 'delivered' ? 'bg-green-500/20 text-green-400' :
-                                'bg-gray-500/20 text-gray-400'
-                            }`}>
-                            {request.status.toUpperCase()}
-                          </span>
                         </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                          <div>
-                            <span className="text-gray-400">Service ID:</span>
-                            <span className="text-white ml-2">{request.serviceId}</span>
-                          </div>
-                          <div>
-                            <span className="text-gray-400">Quantity:</span>
-                            <span className="text-white ml-2">{request.quantity}</span>
-                          </div>
-                          <div>
-                            <span className="text-gray-400">Requested:</span>
-                            <span className="text-white ml-2">{request.requestedAt.toLocaleDateString()}</span>
-                          </div>
-                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-12 text-gray-400">
+                        <Package className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                        <p className="text-lg">No spare part requests</p>
+                        <p className="text-sm">Create your first spare part request to get started.</p>
                       </div>
-                    ))}
+                    )}
                   </div>
 
                   {/* Pagination */}
@@ -825,7 +861,7 @@ const MechanicDashboard = () => {
                       <button
                         onClick={() => setCurrentSparePartPage(prev => Math.max(prev - 1, 1))}
                         disabled={currentSparePartPage === 1}
-                        className="flex items-center space-x-2 px-4 py-2 bg-gray-800border border-gray-700 rounded-xl text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-700/50 transition-colors duration-300"
+                        className="flex items-center space-x-2 px-4 py-2 bg-gray-800 border border-gray-700 rounded-xl text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-700/50 transition-colors duration-300"
                       >
                         <ChevronLeft className="w-4 h-4" />
                         <span>Previous</span>
@@ -838,7 +874,7 @@ const MechanicDashboard = () => {
                       <button
                         onClick={() => setCurrentSparePartPage(prev => Math.min(prev + 1, totalSparePartPages))}
                         disabled={currentSparePartPage === totalSparePartPages}
-                        className="flex items-center space-x-2 px-4 py-2 bg-gray-800border border-gray-700 rounded-xl text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-700/50 transition-colors duration-300"
+                        className="flex items-center space-x-2 px-4 py-2 bg-gray-800 border border-gray-700 rounded-xl text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-700/50 transition-colors duration-300"
                       >
                         <span>Next</span>
                         <ChevronRight className="w-4 h-4" />
@@ -874,7 +910,7 @@ const MechanicDashboard = () => {
                   <div className="space-y-4">
                     {recentNotifications.length > 0 ? (
                       recentNotifications.map((notification) => (
-                        <div key={notification.id} className="bg-gray-800rounded-2xl p-4 border border-gray-700">
+                        <div key={notification.id} className="bg-gray-800 rounded-2xl p-4 border border-gray-700">
                           <div className="flex items-center space-x-3">
                             <div className={`w-8 h-8 rounded-full flex items-center justify-center ${notification.type === 'booking' ? 'bg-blue-500/20' :
                               notification.type === 'spare-part' ? 'bg-purple-500/20' :
@@ -1022,7 +1058,7 @@ const MechanicDashboard = () => {
                     </div>
 
                     {/* Working Hours */}
-                    <div className="bg-gray-800rounded-2xl p-6 border border-gray-700">
+                    <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
                       <h3 className="text-lg font-semibold text-white mb-4">Working Hours</h3>
                       <div className="space-y-3">
                         {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((day) => (
@@ -1162,8 +1198,8 @@ const MechanicDashboard = () => {
 
                   <div>
                     <h4 className="text-gray-400 text-sm mb-2">Vehicle Information</h4>
-                    <p className="text-white font-semibold">{selectedBooking.vehicle.model}</p>
-                    <p className="text-gray-300">{selectedBooking.vehicle.year} • {selectedBooking.vehicle.registration}</p>
+                    <p className="text-white font-semibold">{selectedBooking.vehicle?.model}</p>
+                    <p className="text-gray-300">{selectedBooking.vehicle?.year} • {selectedBooking.vehicle?.registration}</p>
                   </div>
 
                   <div>
@@ -1182,7 +1218,7 @@ const MechanicDashboard = () => {
                 {selectedBooking.notes && (
                   <div>
                     <h4 className="text-gray-400 text-sm mb-2">Additional Notes</h4>
-                    <p className="text-gray-300 bg-gray-800rounded-xl p-4">{selectedBooking.notes}</p>
+                    <p className="text-gray-300 bg-gray-800 rounded-xl p-4">{selectedBooking.notes}</p>
                   </div>
                 )}
 
@@ -1205,6 +1241,7 @@ const MechanicDashboard = () => {
                       <option value="confirmed">Confirmed</option>
                       <option value="in-progress">In Progress</option>
                       <option value="completed">Completed</option>
+                      <option value="cancelled">Cancelled</option>
                     </select>
 
                     <button

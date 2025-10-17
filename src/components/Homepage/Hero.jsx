@@ -4,8 +4,11 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowBigDown, ArrowBigDownDash, ArrowBigDownIcon, ArrowRight, Award, CheckCircle, Code, Shield, TrendingUp, Users, Zap } from "lucide-react"
-
+import { useNavigate } from "react-router-dom";
 function TextRoll({ children, className }) {
+
+
+
   return (
     <motion.span
       className={className}
@@ -45,6 +48,8 @@ const stats = [
 ];
 
 const Hero = () => {
+
+  const navigate = useNavigate();
   return (
     <div className="relative h-screen flex items-center justify-center overflow-hidden">
 
@@ -115,7 +120,7 @@ const Hero = () => {
             >
               <Button
                 onClick={() => {
-                  location.href = "/";
+                  location.href = "/find-mechanics";
                 }}
                 size="lg"
                 className="bg-orange-500 h-16 cursor-pointer hover:bg-orange-700 text-white shadow-lg shadow-orange-600/25"
@@ -125,7 +130,7 @@ const Hero = () => {
               </Button>
               <Button
                 onClick={() => {
-                  location.href = "/projects";
+                  navigate("/#services")
                 }}
                 size="lg"
                 variant="outline"

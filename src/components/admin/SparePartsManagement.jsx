@@ -1,53 +1,107 @@
-import React, { useState } from 'react';
-import {
-    DataGrid,
-    GridToolbar,
-    GridActionsCellItem
-} from '@mui/x-data-grid';
-import {
-    Box,
-    Button,
-    Modal,
-    TextField,
-    Select,
-    MenuItem,
-    FormControl,
-    InputLabel,
-    Chip,
-    IconButton,
-    Typography,
-    Card,
-    CardContent
-} from '@mui/material';
-import {
-    CheckCircle,
-    Cancel,
-    LocalShipping,
-    Inventory,
-    Visibility
-} from '@mui/icons-material';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { X } from 'lucide-react';
+import { toast } from 'sonner';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+    Eye,
+    CheckCircle,
+    XCircle,
+    Truck,
+    Package,
+    RefreshCw,
+    MoreHorizontal,
+    User,
+    Car,
+    Calendar,
+    AlertTriangle
+} from 'lucide-react';
+import axiosInstance from '../../utils/adminaxios';
 
-const SparePartsManagement = ({ spareParts, setSpareParts, addNotification }) => {
+const SparePartsManagement = ({ addNotification }) => {
+    const [spareParts, setSpareParts] = useState([]);
     const [selectedSparePart, setSelectedSparePart] = useState(null);
     const [statusFilter, setStatusFilter] = useState('all');
+    const [loading, setLoading] = useState(true);
+    const [viewModal, setViewModal] = useState(false);
+
+    // Fetch all spare parts
+    const fetchSpareParts = async () => {
+        try {
+            setLoading(true);
+            const { data } = await axiosInstance.get("/admin/get-all-spare-parts");
+            setSpareParts(data);
+            toast.success('Spare parts loaded successfully');
+        } catch (error) {
+            console.error('Error fetching spare parts:', error);
+            toast.error('Error fetching spare parts: ' + (error.response?.data?.message || error.message));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchSpareParts();
+    }, []);
 
     // Update Spare Part Status
-    const updateSparePartStatus = (requestId, newStatus) => {
-        setSpareParts(prev => prev.map(request =>
-            request.id === requestId ? { ...request, status: newStatus } : request
-        ));
+    const updateSparePartStatus = async (requestId, newStatus) => {
+        try {
+            const { data } = await axiosInstance.put("/admin/update-spare-part-status", {
+                requestId,
+                status: newStatus
+            });
 
-        const request = spareParts.find(r => r.id === requestId);
-        const statusMessages = {
-            'approved': 'approved',
-            'rejected': 'rejected',
-            'dispatched': 'dispatched',
-            'delivered': 'delivered'
-        };
+            // Update the specific spare part in the state
+            setSpareParts(prev => prev.map(request =>
+                request.id === requestId ? data : request
+            ));
 
-        addNotification(`Spare part request ${requestId} ${statusMessages[newStatus]}`, 'spare-part');
+            const statusMessages = {
+                'approved': 'approved',
+                'rejected': 'rejected',
+                'dispatched': 'dispatched',
+                'delivered': 'delivered'
+            };
+
+            addNotification(`Spare part request ${requestId} ${statusMessages[newStatus]}`, 'spare-part');
+            toast.success(`Spare part request ${statusMessages[newStatus]} successfully`);
+        } catch (error) {
+            console.error('Error updating spare part status:', error);
+            toast.error('Error updating spare part status: ' + (error.response?.data?.message || error.message));
+        }
     };
 
     // Filter spare parts by status
@@ -55,575 +109,455 @@ const SparePartsManagement = ({ spareParts, setSpareParts, addNotification }) =>
         ? spareParts
         : spareParts.filter(part => part.status === statusFilter);
 
-    // DataGrid Columns
-    const columns = [
-        {
-            field: 'id',
-            headerName: 'Request ID',
-            width: 130,
-            renderCell: (params) => (
-                <Typography variant="body2" color="white" fontWeight="bold">
-                    {params.value}
-                </Typography>
-            )
-        },
-        {
-            field: 'mechanic',
-            headerName: 'Mechanic',
-            width: 180,
-            valueGetter: (params) => {
-                if (!params.row?.mechanic) return 'N/A';
-                return params.row.mechanic.name || 'Unknown Mechanic';
-            },
-            renderCell: (params) => {
-                const mechanic = params.row.mechanic || {};
-                return (
-                    <Box>
-                        <Typography variant="body2" fontWeight="bold" color="white">
-                            {mechanic.name || 'Not Assigned'}
-                        </Typography>
-                        <Typography variant="caption" color="grey.400">
-                            {mechanic.phone || 'N/A'}
-                        </Typography>
-                    </Box>
-                );
-            }
-        },
-        {
-            field: 'serviceId',
-            headerName: 'Service ID',
-            width: 130,
-            renderCell: (params) => (
-                <Typography variant="body2" color="white">
-                    {params.value}
-                </Typography>
-            )
-        },
-        {
-            field: 'partName',
-            headerName: 'Part Details',
-            width: 200,
-            renderCell: (params) => (
-                <Box>
-                    <Typography variant="body2" fontWeight="bold" color="white">
-                        {params.value}
-                    </Typography>
-                    <Typography variant="caption" color="grey.400">
-                        Qty: {params.row.quantity}
-                    </Typography>
-                </Box>
-            )
-        },
-        {
-            field: 'carModel',
-            headerName: 'Car Model',
-            width: 150,
-            renderCell: (params) => (
-                <Typography variant="body2" color="white">
-                    {params.value}
-                </Typography>
-            )
-        },
-        {
-            field: 'year',
-            headerName: 'Year',
-            width: 100,
-            renderCell: (params) => (
-                <Typography variant="body2" color="white">
-                    {params.value}
-                </Typography>
-            )
-        },
-        {
-            field: 'urgency',
-            headerName: 'Urgency',
-            width: 120,
-            renderCell: (params) => (
-                <Chip
-                    label={params.value}
-                    size="small"
-                    sx={{
-                        color: 'white',
-                        fontWeight: 'bold',
-                        backgroundColor:
-                            params.value === 'high' ? '#ef4444' :
-                                params.value === 'medium' ? '#f59e0b' : '#10b981'
-                    }}
-                />
-            )
-        },
-        {
-            field: 'status',
-            headerName: 'Status',
-            width: 150,
-            renderCell: (params) => (
-                <Select
-                    value={params.value}
-                    onChange={(e) => updateSparePartStatus(params.row.id, e.target.value)}
-                    size="small"
-                    sx={{
-                        color: 'white',
-                        backgroundColor: '#1f2937',
-                        '& .MuiOutlinedInput-notchedOutline': {
-                            border: '1px solid #374151',
-                            borderRadius: '6px'
-                        },
-                        '&:hover .MuiOutlinedInput-notchedOutline': {
-                            borderColor: '#4b5563'
-                        },
-                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                            borderColor: '#f97316'
-                        },
-                        '& .MuiSelect-select': {
-                            py: 0.5,
-                            color: 'white'
-                        },
-                        '& .MuiSvgIcon-root': {
-                            color: '#9ca3af'
-                        }
-                    }}
-                >
-                    <MenuItem value="pending">
-                        <Chip label="Pending" color="warning" size="small" sx={{ color: 'white' }} />
-                    </MenuItem>
-                    <MenuItem value="approved">
-                        <Chip label="Approved" color="success" size="small" sx={{ color: 'white' }} />
-                    </MenuItem>
-                    <MenuItem value="dispatched">
-                        <Chip label="Dispatched" color="info" size="small" sx={{ color: 'white' }} />
-                    </MenuItem>
-                    <MenuItem value="delivered">
-                        <Chip label="Delivered" color="primary" size="small" sx={{ color: 'white' }} />
-                    </MenuItem>
-                    <MenuItem value="rejected">
-                        <Chip label="Rejected" color="error" size="small" sx={{ color: 'white' }} />
-                    </MenuItem>
-                </Select>
-            )
-        },
-        {
-            field: 'actions',
-            headerName: 'Actions',
-            width: 180,
-            type: 'actions',
-            getActions: (params) => [
-                <GridActionsCellItem
-                    icon={<Visibility />}
-                    label="View Details"
-                    onClick={() => setSelectedSparePart(params.row)}
-                    sx={{
-                        color: '#60a5fa',
-                        '&:hover': {
-                            color: '#3b82f6',
-                            backgroundColor: 'rgba(96, 165, 250, 0.1)'
-                        }
-                    }}
-                />,
-                <GridActionsCellItem
-                    icon={<CheckCircle />}
-                    label="Approve"
-                    onClick={() => updateSparePartStatus(params.row.id, 'approved')}
-                    sx={{
-                        color: '#34d399',
-                        '&:hover': {
-                            color: '#10b981',
-                            backgroundColor: 'rgba(52, 211, 153, 0.1)'
-                        },
-                        '&.Mui-disabled': {
-                            color: '#6b7280'
-                        }
-                    }}
-                    disabled={params.row.status !== 'pending'}
-                />,
-                <GridActionsCellItem
-                    icon={<LocalShipping />}
-                    label="Dispatch"
-                    onClick={() => updateSparePartStatus(params.row.id, 'dispatched')}
-                    sx={{
-                        color: '#f59e0b',
-                        '&:hover': {
-                            color: '#d97706',
-                            backgroundColor: 'rgba(245, 158, 11, 0.1)'
-                        },
-                        '&.Mui-disabled': {
-                            color: '#6b7280'
-                        }
-                    }}
-                    disabled={params.row.status !== 'approved'}
-                />,
-                <GridActionsCellItem
-                    icon={<Inventory />}
-                    label="Mark Delivered"
-                    onClick={() => updateSparePartStatus(params.row.id, 'delivered')}
-                    sx={{
-                        color: '#8b5cf6',
-                        '&:hover': {
-                            color: '#7c3aed',
-                            backgroundColor: 'rgba(139, 92, 246, 0.1)'
-                        },
-                        '&.Mui-disabled': {
-                            color: '#6b7280'
-                        }
-                    }}
-                    disabled={params.row.status !== 'dispatched'}
-                />,
-                <GridActionsCellItem
-                    icon={<Cancel />}
-                    label="Reject"
-                    onClick={() => updateSparePartStatus(params.row.id, 'rejected')}
-                    sx={{
-                        color: '#ef4444',
-                        '&:hover': {
-                            color: '#dc2626',
-                            backgroundColor: 'rgba(239, 68, 68, 0.1)'
-                        },
-                        '&.Mui-disabled': {
-                            color: '#6b7280'
-                        }
-                    }}
-                    disabled={params.row.status !== 'pending'}
-                />
-            ]
+    // Get status badge variant
+    const getStatusVariant = (status) => {
+        switch (status) {
+            case 'pending': return 'secondary';
+            case 'approved': return 'default';
+            case 'dispatched': return 'default';
+            case 'delivered': return 'default';
+            case 'rejected': return 'destructive';
+            default: return 'secondary';
         }
-    ];
+    };
+
+    // Get urgency badge variant
+    const getUrgencyVariant = (urgency) => {
+        switch (urgency?.toLowerCase()) {
+            case 'high': return 'destructive';
+            case 'medium': return 'warning';
+            case 'low': return 'default';
+            default: return 'secondary';
+        }
+    };
+
+    // Format date
+    const formatDate = (dateString) => {
+        if (!dateString) return 'N/A';
+        return new Date(dateString).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    };
+
+    // Get status actions
+    const getStatusActions = (sparePart) => {
+        const actions = [];
+
+        switch (sparePart.status) {
+            case 'pending':
+                actions.push(
+                    {
+                        label: 'Approve',
+                        icon: CheckCircle,
+                        action: () => updateSparePartStatus(sparePart.id, 'approved'),
+                        variant: 'default'
+                    },
+                    {
+                        label: 'Reject',
+                        icon: XCircle,
+                        action: () => updateSparePartStatus(sparePart.id, 'rejected'),
+                        variant: 'destructive'
+                    }
+                );
+                break;
+            case 'approved':
+                actions.push({
+                    label: 'Dispatch',
+                    icon: Truck,
+                    action: () => updateSparePartStatus(sparePart.id, 'dispatched'),
+                    variant: 'default'
+                });
+                break;
+            case 'dispatched':
+                actions.push({
+                    label: 'Mark Delivered',
+                    icon: Package,
+                    action: () => updateSparePartStatus(sparePart.id, 'delivered'),
+                    variant: 'default'
+                });
+                break;
+        }
+
+        return actions;
+    };
+
+    if (loading) {
+        return (
+            <div className="flex justify-center items-center h-96">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                <span className="ml-3 text-lg">Loading spare parts...</span>
+            </div>
+        );
+    }
 
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="space-y-6"
+            className="space-y-6 p-6"
         >
+            {/* Header */}
             <div className="flex justify-between items-center">
                 <div>
-                    <h2 className="text-2xl font-bold text-white mb-2">Spare Parts Management</h2>
-                    <p className="text-gray-400">Manage all spare part requests</p>
+                    <h2 className="text-3xl font-bold tracking-tight">Spare Parts Management</h2>
+                    <p className="text-muted-foreground">Manage all spare part requests</p>
+                    <div className="flex gap-4 mt-2 text-sm text-muted-foreground">
+                        <span>Total: {spareParts.length}</span>
+                        <span>Pending: {spareParts.filter(p => p.status === 'pending').length}</span>
+                        <span>Approved: {spareParts.filter(p => p.status === 'approved').length}</span>
+                        <span>Dispatched: {spareParts.filter(p => p.status === 'dispatched').length}</span>
+                        <span>Delivered: {spareParts.filter(p => p.status === 'delivered').length}</span>
+                    </div>
                 </div>
-                <FormControl sx={{ minWidth: 200 }}>
-                    <InputLabel sx={{ color: 'grey.400' }}>Filter by Status</InputLabel>
-                    <Select
-                        value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
-                        label="Filter by Status"
-                        sx={{
-                            color: 'white',
-                            backgroundColor: '#1f2937',
-                            '& .MuiOutlinedInput-notchedOutline': {
-                                borderColor: '#374151'
-                            },
-                            '&:hover .MuiOutlinedInput-notchedOutline': {
-                                borderColor: '#4b5563'
-                            },
-                            '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                borderColor: '#f97316'
-                            },
-                            '& .MuiSvgIcon-root': {
-                                color: '#9ca3af'
-                            }
-                        }}
+                <div className="flex gap-2">
+                    <Button
+                        onClick={fetchSpareParts}
+                        variant="outline"
+                        className="gap-2 text-black"
                     >
-                        <MenuItem value="all" sx={{ color: 'white' }}>All Status</MenuItem>
-                        <MenuItem value="pending" sx={{ color: 'white' }}>Pending</MenuItem>
-                        <MenuItem value="approved" sx={{ color: 'white' }}>Approved</MenuItem>
-                        <MenuItem value="dispatched" sx={{ color: 'white' }}>Dispatched</MenuItem>
-                        <MenuItem value="delivered" sx={{ color: 'white' }}>Delivered</MenuItem>
-                        <MenuItem value="rejected" sx={{ color: 'white' }}>Rejected</MenuItem>
+                        <RefreshCw className="h-4 w-4 text-black" />
+                        Refresh
+                    </Button>
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                        <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Filter by status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Status</SelectItem>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="approved">Approved</SelectItem>
+                            <SelectItem value="dispatched">Dispatched</SelectItem>
+                            <SelectItem value="delivered">Delivered</SelectItem>
+                            <SelectItem value="rejected">Rejected</SelectItem>
+                        </SelectContent>
                     </Select>
-                </FormControl>
+                </div>
             </div>
 
-            {/* Spare Parts DataGrid */}
-            <Box sx={{
-                height: 600,
-                width: '100%',
-                '& .MuiDataGrid-root': {
-                    border: '1px solid #374151',
-                    borderRadius: '12px',
-                    backgroundColor: '#111827'
-                }
-            }}>
-                <DataGrid
-                    rows={filteredSpareParts}
-                    columns={columns}
-                    pageSize={10}
-                    rowsPerPageOptions={[10]}
-                    components={{ Toolbar: GridToolbar }}
-                    sx={{
-                        // Base styles
-                        border: 'none',
-                        color: 'white',
-                        backgroundColor: '#111827',
+            {/* Spare Parts Table */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>All Spare Part Requests</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Request ID</TableHead>
+                                <TableHead>Mechanic</TableHead>
+                                <TableHead>Service ID</TableHead>
+                                <TableHead>Part Details</TableHead>
+                                <TableHead>Car Model</TableHead>
+                                <TableHead>Year</TableHead>
+                                <TableHead>Urgency</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {filteredSpareParts.map((part) => (
+                                <TableRow key={part.id}>
+                                    <TableCell className="font-mono font-medium">
+                                        {part.requestId || 'N/A'}
+                                    </TableCell>
+                                    <TableCell>
+                                        <div>
+                                            <div className="font-medium">
+                                                {part.mechanic?.name || 'Not Assigned'}
+                                            </div>
+                                            <div className="text-sm text-muted-foreground">
+                                                {part.mechanic?.phone || 'N/A'}
+                                            </div>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="font-mono">
+                                        {part.serviceId || 'N/A'}
+                                    </TableCell>
+                                    <TableCell>
+                                        <div>
+                                            <div className="font-medium">
+                                                {part.partName || 'N/A'}
+                                            </div>
+                                            <div className="text-sm text-muted-foreground">
+                                                Qty: {part.quantity || 'N/A'}
+                                            </div>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        {part.carModel || 'N/A'}
+                                    </TableCell>
+                                    <TableCell>
+                                        {part.year || 'N/A'}
+                                    </TableCell>
+                                    <TableCell>
+                                        <Badge variant={getUrgencyVariant(part.urgency)}>
+                                            {part.urgency || 'Medium'}
+                                        </Badge>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Select
+                                            value={part.status || 'pending'}
+                                            onValueChange={(value) => updateSparePartStatus(part.id, value)}
+                                        >
+                                            <SelectTrigger className="w-32">
+                                                <SelectValue>
+                                                    <Badge variant={getStatusVariant(part.status)}>
+                                                        {part.status || 'pending'}
+                                                    </Badge>
+                                                </SelectValue>
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="pending">
+                                                    <Badge variant="secondary">Pending</Badge>
+                                                </SelectItem>
+                                                <SelectItem value="approved">
+                                                    <Badge variant="default">Approved</Badge>
+                                                </SelectItem>
+                                                <SelectItem value="dispatched">
+                                                    <Badge variant="default">Dispatched</Badge>
+                                                </SelectItem>
+                                                <SelectItem value="delivered">
+                                                    <Badge variant="default">Delivered</Badge>
+                                                </SelectItem>
+                                                <SelectItem value="rejected">
+                                                    <Badge variant="destructive">Rejected</Badge>
+                                                </SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                                    <MoreHorizontal className="h-4 w-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuItem onClick={() => {
+                                                    setSelectedSparePart(part);
+                                                    setViewModal(true);
+                                                }}>
+                                                    <Eye className="h-4 w-4 mr-2" />
+                                                    View Details
+                                                </DropdownMenuItem>
 
-                        // Cell styles
-                        '& .MuiDataGrid-cell': {
-                            color: 'white',
-                            borderBottom: '1px solid #374151',
-                            '&:focus': {
-                                outline: 'none',
-                            },
-                            '&:focus-within': {
-                                outline: 'none',
-                            },
-                        },
+                                                {/* Status-specific actions */}
+                                                {getStatusActions(part).map((action, index) => (
+                                                    <DropdownMenuItem
+                                                        key={index}
+                                                        onClick={action.action}
+                                                        className={action.variant === 'destructive' ? 'text-destructive' : ''}
+                                                    >
+                                                        <action.icon className="h-4 w-4 mr-2" />
+                                                        {action.label}
+                                                    </DropdownMenuItem>
+                                                ))}
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
 
-                        // Row hover and selection
-                        '& .MuiDataGrid-row': {
-                            color: 'white',
-                            backgroundColor: '#111827',
-                            '&:hover': {
-                                backgroundColor: 'rgba(55, 65, 81, 0.5)',
-                            },
-                            '&.Mui-selected': {
-                                backgroundColor: 'rgba(249, 115, 22, 0.16)',
-                                '&:hover': {
-                                    backgroundColor: 'rgba(249, 115, 22, 0.24)',
-                                },
-                            },
-                        },
-
-                        // Column headers
-                        '& .MuiDataGrid-columnHeaders': {
-                            backgroundColor: '#1f2937',
-                            color: '#f3f4f6',
-                            borderBottom: '1px solid #374151',
-                            fontSize: '0.875rem',
-                            fontWeight: '600',
-                        },
-
-                        // Column header cells
-                        '& .MuiDataGrid-columnHeader': {
-                            '&:focus': {
-                                outline: 'none',
-                            },
-                            '&:focus-within': {
-                                outline: 'none',
-                            },
-                            backgroundColor: '#1f2937',
-                        },
-
-                        // Header title
-                        '& .MuiDataGrid-columnHeaderTitle': {
-                            fontWeight: '600',
-                            color: '#f3f4f6',
-                        },
-
-                        // Sort icon
-                        '& .MuiDataGrid-iconButtonContainer': {
-                            visibility: 'visible',
-                            '& .MuiSvgIcon-root': {
-                                color: '#9ca3af',
-                                '&:hover': {
-                                    color: '#f3f4f6',
-                                },
-                            },
-                        },
-
-                        // Menu icon
-                        '& .MuiDataGrid-menuIcon': {
-                            visibility: 'visible',
-                            '& .MuiSvgIcon-root': {
-                                color: '#9ca3af',
-                                '&:hover': {
-                                    color: '#f3f4f6',
-                                },
-                            },
-                        },
-
-                        // Toolbar
-                        '& .MuiDataGrid-toolbarContainer': {
-                            borderBottom: '1px solid #374151',
-                            backgroundColor: '#1f2937',
-                            padding: '16px',
-                            '& .MuiButton-text': {
-                                color: '#e5e7eb',
-                                '&:hover': {
-                                    backgroundColor: 'rgba(249, 115, 22, 0.1)',
-                                    color: '#f97316',
-                                },
-                            },
-                            '& .MuiInput-root': {
-                                color: 'white',
-                                '&:before': {
-                                    borderBottomColor: '#6b7280',
-                                },
-                                '&:hover:before': {
-                                    borderBottomColor: '#9ca3af',
-                                },
-                                '&:after': {
-                                    borderBottomColor: '#f97316',
-                                },
-                            },
-                            '& .MuiInputLabel-root': {
-                                color: '#9ca3af',
-                            },
-                        },
-
-                        // Checkbox
-                        '& .MuiCheckbox-root': {
-                            color: '#6b7280',
-                            '&.Mui-checked': {
-                                color: '#f97316',
-                            },
-                        },
-
-                        // Pagination
-                        '& .MuiTablePagination-root': {
-                            color: '#d1d5db',
-                            borderTop: '1px solid #374151',
-                            backgroundColor: '#1f2937',
-                            '& .MuiIconButton-root': {
-                                color: '#e5e7eb',
-                                '&:hover': {
-                                    backgroundColor: 'rgba(249, 115, 22, 0.1)',
-                                },
-                                '&.Mui-disabled': {
-                                    color: '#6b7280',
-                                },
-                            },
-                            '& .MuiTablePagination-selectIcon': {
-                                color: '#e5e7eb',
-                            },
-                        },
-
-                        // Footer
-                        '& .MuiDataGrid-footerContainer': {
-                            borderTop: '1px solid #374151',
-                            backgroundColor: '#1f2937',
-                        },
-
-                        // Selected row count
-                        '& .MuiDataGrid-selectedRowCount': {
-                            color: '#d1d5db',
-                        },
-
-                        // Action buttons
-                        '& .MuiDataGrid-actionsCell': {
-                            '& .MuiIconButton-root': {
-                                color: '#e5e7eb',
-                                '&:hover': {
-                                    backgroundColor: 'rgba(249, 115, 22, 0.1)',
-                                },
-                            },
-                        },
-
-                        // Column separator
-                        '& .MuiDataGrid-columnSeparator': {
-                            color: '#374151',
-                        },
-
-                        // Virtual scroller
-                        '& .MuiDataGrid-virtualScroller': {
-                            backgroundColor: '#111827',
-                        },
-                    }}
-                />
-            </Box>
-
-            {/* Spare Part Details Modal */}
-            <Modal open={!!selectedSparePart} onClose={() => setSelectedSparePart(null)}>
-                <Box sx={{
-                    position: 'absolute',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    width: { xs: '90%', md: '500px' },
-                    maxHeight: '80vh',
-                    overflow: 'auto',
-                    bgcolor: '#1f2937',
-                    border: '1px solid #374151',
-                    borderRadius: '12px',
-                    boxShadow: 24,
-                    p: 4
-                }}>
-                    {selectedSparePart && (
-                        <>
-                            <div className="flex justify-between items-center mb-6">
-                                <h3 className="text-xl font-bold text-white">Spare Part Request Details</h3>
-                                <IconButton onClick={() => setSelectedSparePart(null)} sx={{ color: 'grey.400' }}>
-                                    <X />
-                                </IconButton>
+                    {filteredSpareParts.length === 0 && (
+                        <div className="text-center py-12">
+                            <div className="text-muted-foreground text-lg">
+                                {spareParts.length === 0 ? 'No spare part requests found' : 'No requests match the current filter'}
                             </div>
-
-                            <div className="space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <Typography variant="body2" color="grey.400">Request ID</Typography>
-                                        <Typography variant="body1" color="white">{selectedSparePart.id}</Typography>
-                                    </div>
-                                    <div>
-                                        <Typography variant="body2" color="grey.400">Status</Typography>
-                                        <Chip
-                                            label={selectedSparePart.status}
-                                            color={
-                                                selectedSparePart.status === 'approved' ? 'success' :
-                                                    selectedSparePart.status === 'rejected' ? 'error' :
-                                                        selectedSparePart.status === 'dispatched' ? 'info' :
-                                                            selectedSparePart.status === 'delivered' ? 'primary' : 'warning'
-                                            }
-                                            size="small"
-                                            sx={{ color: 'white', fontWeight: 'bold' }}
-                                        />
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <Typography variant="body2" color="grey.400">Mechanic</Typography>
-                                    <Typography variant="body1" color="white">{selectedSparePart.mechanic?.name || 'N/A'}</Typography>
-                                </div>
-
-                                <div>
-                                    <Typography variant="body2" color="grey.400">Service ID</Typography>
-                                    <Typography variant="body1" color="white">{selectedSparePart.serviceId}</Typography>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <Typography variant="body2" color="grey.400">Part Name</Typography>
-                                        <Typography variant="body1" color="white">{selectedSparePart.partName}</Typography>
-                                    </div>
-                                    <div>
-                                        <Typography variant="body2" color="grey.400">Quantity</Typography>
-                                        <Typography variant="body1" color="white">{selectedSparePart.quantity}</Typography>
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <Typography variant="body2" color="grey.400">Car Model</Typography>
-                                        <Typography variant="body1" color="white">{selectedSparePart.carModel}</Typography>
-                                    </div>
-                                    <div>
-                                        <Typography variant="body2" color="grey.400">Year</Typography>
-                                        <Typography variant="body1" color="white">{selectedSparePart.year}</Typography>
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <Typography variant="body2" color="grey.400">Urgency</Typography>
-                                    <Chip
-                                        label={selectedSparePart.urgency}
-                                        sx={{
-                                            color: 'white',
-                                            fontWeight: 'bold',
-                                            backgroundColor:
-                                                selectedSparePart.urgency === 'high' ? '#ef4444' :
-                                                    selectedSparePart.urgency === 'medium' ? '#f59e0b' : '#10b981'
-                                        }}
-                                        size="small"
-                                    />
-                                </div>
-
-                                <div>
-                                    <Typography variant="body2" color="grey.400">Requested At</Typography>
-                                    <Typography variant="body1" color="white">
-                                        {new Date(selectedSparePart.requestedAt).toLocaleDateString()} at {' '}
-                                        {new Date(selectedSparePart.requestedAt).toLocaleTimeString()}
-                                    </Typography>
-                                </div>
-                            </div>
-                        </>
+                            <Button
+                                onClick={fetchSpareParts}
+                                className="mt-4 gap-2"
+                            >
+                                <RefreshCw className="h-4 w-4" />
+                                Refresh
+                            </Button>
+                        </div>
                     )}
-                </Box>
-            </Modal>
+                </CardContent>
+            </Card>
+
+            {/* View Details Modal */}
+            <Dialog open={viewModal} onOpenChange={setViewModal}>
+                <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+                    <DialogHeader className="flex-shrink-0">
+                        <DialogTitle>Spare Part Request Details</DialogTitle>
+                    </DialogHeader>
+
+                    <div className="overflow-y-auto flex-1 pr-2 -mr-2">
+                        {selectedSparePart && (
+                            <div className="space-y-4 pb-4">
+                                {/* Request Information */}
+                                <Card>
+                                    <CardHeader className="pb-3">
+                                        <CardTitle className="flex items-center gap-2 text-lg">
+                                            <Package className="h-5 w-5" />
+                                            Request Information
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <Label className="text-sm text-muted-foreground">Request ID</Label>
+                                            <p className="font-mono font-medium">{selectedSparePart.requestId || 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <Label className="text-sm text-muted-foreground">Service ID</Label>
+                                            <p className="font-mono font-medium">{selectedSparePart.serviceId || 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <Label className="text-sm text-muted-foreground">Status</Label>
+                                            <Badge variant={getStatusVariant(selectedSparePart.status)}>
+                                                {selectedSparePart.status || 'pending'}
+                                            </Badge>
+                                        </div>
+                                        <div>
+                                            <Label className="text-sm text-muted-foreground">Urgency</Label>
+                                            <Badge variant={getUrgencyVariant(selectedSparePart.urgency)}>
+                                                {selectedSparePart.urgency || 'Medium'}
+                                            </Badge>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                {/* Mechanic Information */}
+                                <Card>
+                                    <CardHeader className="pb-3">
+                                        <CardTitle className="flex items-center gap-2 text-lg">
+                                            <User className="h-5 w-5" />
+                                            Mechanic Information
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <Label className="text-sm text-muted-foreground">Name</Label>
+                                            <p className="font-medium">{selectedSparePart.mechanic?.name || 'Not Assigned'}</p>
+                                        </div>
+                                        <div>
+                                            <Label className="text-sm text-muted-foreground">Phone</Label>
+                                            <p className="font-medium">{selectedSparePart.mechanic?.phone || 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <Label className="text-sm text-muted-foreground">Email</Label>
+                                            <p className="font-medium">{selectedSparePart.mechanic?.email || 'N/A'}</p>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                {/* Part Details */}
+                                <Card>
+                                    <CardHeader className="pb-3">
+                                        <CardTitle className="flex items-center gap-2 text-lg">
+                                            <Package className="h-5 w-5" />
+                                            Part Details
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <Label className="text-sm text-muted-foreground">Part Name</Label>
+                                            <p className="font-medium">{selectedSparePart.partName || 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <Label className="text-sm text-muted-foreground">Quantity</Label>
+                                            <p className="font-medium">{selectedSparePart.quantity || 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <Label className="text-sm text-muted-foreground">Amount</Label>
+                                            <p className="font-medium text-primary">₹{selectedSparePart.amount || '0'}</p>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                {/* Vehicle Information */}
+                                <Card>
+                                    <CardHeader className="pb-3">
+                                        <CardTitle className="flex items-center gap-2 text-lg">
+                                            <Car className="h-5 w-5" />
+                                            Vehicle Information
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <Label className="text-sm text-muted-foreground">Car Model</Label>
+                                            <p className="font-medium">{selectedSparePart.carModel || 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <Label className="text-sm text-muted-foreground">Manufactured Year</Label>
+                                            <p className="font-medium">{selectedSparePart.year || 'N/A'}</p>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                {/* Timeline Information */}
+                                <Card>
+                                    <CardHeader className="pb-3">
+                                        <CardTitle className="flex items-center gap-2 text-lg">
+                                            <Calendar className="h-5 w-5" />
+                                            Timeline
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div>
+                                            <Label className="text-sm text-muted-foreground">Requested At</Label>
+                                            <p className="font-medium">
+                                                {selectedSparePart.requestedAt ?
+                                                    formatDate(selectedSparePart.requestedAt) : 'N/A'
+                                                }
+                                            </p>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                {/* Quick Actions */}
+                                <Card>
+                                    <CardHeader className="pb-3">
+                                        <CardTitle className="flex items-center gap-2 text-lg">
+                                            <AlertTriangle className="h-5 w-5" />
+                                            Quick Actions
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="flex flex-wrap gap-2">
+                                            {getStatusActions(selectedSparePart).map((action, index) => (
+                                                <Button
+                                                    key={index}
+                                                    variant={action.variant === 'destructive' ? 'destructive' : 'default'}
+                                                    size="sm"
+                                                    onClick={action.action}
+                                                    className="gap-2"
+                                                >
+                                                    <action.icon className="h-4 w-4" />
+                                                    {action.label}
+                                                </Button>
+                                            ))}
+                                            <Select
+                                                value={selectedSparePart.status || 'pending'}
+                                                onValueChange={(value) => updateSparePartStatus(selectedSparePart.id, value)}
+                                            >
+                                                <SelectTrigger className="w-40">
+                                                    <SelectValue>
+                                                        Change Status
+                                                    </SelectValue>
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="pending">Pending</SelectItem>
+                                                    <SelectItem value="approved">Approved</SelectItem>
+                                                    <SelectItem value="dispatched">Dispatched</SelectItem>
+                                                    <SelectItem value="delivered">Delivered</SelectItem>
+                                                    <SelectItem value="rejected">Rejected</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </div>
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
         </motion.div>
     );
 };

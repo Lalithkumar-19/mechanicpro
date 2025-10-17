@@ -1,554 +1,526 @@
-import React, { useState } from 'react';
-import {
-  DataGrid,
-  GridToolbar,
-  GridActionsCellItem
-} from '@mui/x-data-grid';
-import {
-  Box,
-  Button,
-  Modal,
-  TextField,
-  Chip,
-  IconButton,
-  Typography,
-  Card,
-  CardContent,
-  Avatar
-} from '@mui/material';
-import {
-  Visibility,
-  Block,
-  CheckCircle
-} from '@mui/icons-material';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { X, User } from 'lucide-react';
+import { toast } from 'sonner';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  Plus,
+  MoreHorizontal,
+  User,
+  Phone,
+  Mail,
+  Car,
+  Calendar,
+  IndianRupee,
+  Shield,
+  ShieldOff,
+  Trash2,
+  Edit,
+  Loader2
+} from 'lucide-react';
+import axiosInstance from '../../utils/adminaxios';
 
-const CustomersManagement = ({ customers, setCustomers, addNotification }) => {
+const CustomersManagement = ({ addNotification }) => {
+  const [customers, setCustomers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showAddCustomer, setShowAddCustomer] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [newCustomer, setNewCustomer] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    password: ''
+  });
 
-  // Toggle Customer Block Status
-  const toggleCustomerBlock = (customerId) => {
-    setCustomers(prev => prev.map(c =>
-      c.id === customerId ? { ...c, isBlocked: !c.isBlocked } : c
-    ));
-
-    const customer = customers.find(c => c.id === customerId);
-    addNotification(
-      `Customer ${customer.name} ${!customer.isBlocked ? 'blocked' : 'unblocked'}`,
-      'customer'
-    );
+  // Fetch all customers
+  const fetchCustomers = async () => {
+    try {
+      setLoading(true);
+      const { data } = await axiosInstance.get("/admin/get-all-customers");
+      setCustomers(data);
+      toast.success('Customers loaded successfully');
+    } catch (error) {
+      console.error('Error fetching customers:', error);
+      toast.error('Error fetching customers: ' + (error.response?.data?.message || error.message));
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Filter customers by search query
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    customer.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    customer.phone.includes(searchQuery)
-  );
+  useEffect(() => {
+    fetchCustomers();
+  }, []);
 
-  // DataGrid Columns
-  const columns = [
-    {
-      field: 'id',
-      headerName: 'Customer ID',
-      width: 130,
-      renderCell: (params) => (
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-          <Typography variant="body2" color="white" fontWeight="bold">
-            {params.value}
-          </Typography>
-        </Box>
-      ),
-      headerAlign: 'center',
-      align: 'center'
-    },
-    {
-      field: 'name',
-      headerName: 'Name',
-      width: 200,
-      renderCell: (params) => (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%', justifyContent: 'center' }}>
-          {/* <Avatar sx={{ width: 40, height: 40, bgcolor: '#3b82f6' }}>
-            <User size={20} />
-          </Avatar> */}
-          <Box sx={{ textAlign: 'left' }}>
-            <Typography variant="body2" fontWeight="bold" color="white">
-              {params.value}
-            </Typography>
-            {/* <Typography variant="caption" color="grey.400">
-              Joined {params.row.joinDate}
-            </Typography> */}
-          </Box>
-        </Box>
-      ),
-      headerAlign: 'center',
-      align: 'center'
-    },
-    {
-      field: 'email',
-      headerName: 'Email',
-      width: 200,
-      renderCell: (params) => (
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-          <Typography variant="body2" color="white" sx={{ textAlign: 'center' }}>
-            {params.value}
-          </Typography>
-        </Box>
-      ),
-      headerAlign: 'center',
-      align: 'center'
-    },
-    {
-      field: 'phone',
-      headerName: 'Phone',
-      width: 150,
-      renderCell: (params) => (
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-          <Typography variant="body2" color="white" sx={{ textAlign: 'center' }}>
-            {params.value}
-          </Typography>
-        </Box>
-      ),
-      headerAlign: 'center',
-      align: 'center'
-    },
-    {
-      field: 'totalBookings',
-      headerName: 'Total Bookings',
-      width: 130,
-      renderCell: (params) => (
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-          <Typography variant="body2" fontWeight="bold" color="white">
-            {params.value}
-          </Typography>
-        </Box>
-      ),
-      headerAlign: 'center',
-      align: 'center'
-    },
-    {
-      field: 'totalSpent',
-      headerName: 'Total Spent',
-      width: 130,
-      renderCell: (params) => (
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-          <Typography variant="body2" fontWeight="bold" color="orange.500">
-            ₹{params.value.toLocaleString()}
-          </Typography>
-        </Box>
-      ),
-      headerAlign: 'center',
-      align: 'center'
-    },
-    {
-      field: 'lastService',
-      headerName: 'Last Service',
-      width: 130,
-      renderCell: (params) => (
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-          <Typography variant="body2" color="white" sx={{ textAlign: 'center' }}>
-            {params.value}
-          </Typography>
-        </Box>
-      ),
-      headerAlign: 'center',
-      align: 'center'
-    },
-    {
-      field: 'isBlocked',
-      headerName: 'Status',
-      width: 120,
-      renderCell: (params) => (
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-          <Chip
-            label={params.value ? 'Blocked' : 'Active'}
-            color={params.value ? 'error' : 'success'}
-            size="small"
-            sx={{ color: 'white', fontWeight: 'bold' }}
-          />
-        </Box>
-      ),
-      headerAlign: 'center',
-      align: 'center'
-    },
-    {
-      field: 'actions',
-      headerName: 'Actions',
-      width: 120,
-      type: 'actions',
-      renderCell: (params) => (
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5, height: '100%' }}>
-          <IconButton
-            onClick={() => setSelectedCustomer(params.row)}
-            sx={{
-              color: '#60a5fa',
-              '&:hover': {
-                color: '#3b82f6',
-                backgroundColor: 'rgba(96, 165, 250, 0.1)'
-              }
-            }}
-          >
-            <Visibility />
-          </IconButton>
-          <IconButton
-            onClick={() => toggleCustomerBlock(params.row.id)}
-            sx={{
-              color: params.row.isBlocked ? '#34d399' : '#ef4444',
-              '&:hover': {
-                color: params.row.isBlocked ? '#10b981' : '#dc2626',
-                backgroundColor: params.row.isBlocked ? 'rgba(52, 211, 153, 0.1)' : 'rgba(239, 68, 68, 0.1)'
-              }
-            }}
-          >
-            {params.row.isBlocked ? <CheckCircle /> : <Block />}
-          </IconButton>
-        </Box>
-      ),
-      headerAlign: 'center',
-      align: 'center'
+  // Handle Add Customer
+  const handleAddCustomer = async () => {
+    try {
+      // Validate required fields
+      if (!newCustomer.name || !newCustomer.phone || !newCustomer.password) {
+        toast.error('Please fill all required fields');
+        return;
+      }
+
+      const { data } = await axiosInstance.post("/admin/create-customer", newCustomer);
+      if (data) {
+        await fetchCustomers();
+        setShowAddCustomer(false);
+        setNewCustomer({
+          name: '',
+          email: '',
+          phone: '',
+          password: ''
+        });
+        addNotification(`New customer added: ${data.name}`, 'customer');
+        toast.success('Customer added successfully');
+      } else {
+        toast.error('Failed to add customer');
+      }
+    } catch (error) {
+      console.error('Error adding customer:', error);
+      toast.error('Error adding customer: ' + (error.response?.data?.message || error.message));
     }
-  ];
+  };
+
+  // Handle Update Customer Status
+  const handleUpdateCustomerStatus = async (customerId, isBlocked) => {
+    try {
+      const { data } = await axiosInstance.put("/admin/update-customer-status", {
+        customerId,
+        isBlocked
+      });
+      console.log(data, "h");
+      if (data) {
+        await fetchCustomers();
+        addNotification(`Customer ${isBlocked ? 'blocked' : 'unblocked'}`, 'customer');
+        toast.success(`Customer ${isBlocked ? 'blocked' : 'unblocked'} successfully`);
+      } else {
+        toast.error('Failed to update customer status');
+      }
+    } catch (error) {
+      console.error('Error updating customer status:', error);
+      toast.error('Error updating customer status: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
+  // Handle Delete Customer
+  const handleDeleteCustomer = async (customerId) => {
+    try {
+      const { data } = await axiosInstance.delete(`/admin/delete-customer/${customerId}`);
+      if (data) {
+        await fetchCustomers();
+        addNotification('Customer deleted', 'customer');
+        toast.success('Customer deleted successfully');
+      } else {
+        toast.error('Failed to delete customer');
+      }
+    } catch (error) {
+      console.error('Error deleting customer:', error);
+      toast.error('Error deleting customer: ' + (error.response?.data?.message || error.message));
+    } finally {
+      setDeleteConfirm(null);
+    }
+  };
+
+  const handleInputChange = (field, value) => {
+    setNewCustomer(prev => ({ ...prev, [field]: value }));
+  };
+
+  const totalCustomers = customers.length;
+  const activeCustomers = customers.filter(c => !c.isBlocked).length;
+  const blockedCustomers = customers.filter(c => c.isBlocked).length;
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+        <span className="ml-2 text-lg">Loading customers...</span>
+      </div>
+    );
+  }
+
+  console.log(customers, "customers");
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="space-y-6"
+      className="space-y-6 p-6"
     >
+      {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold text-white mb-2">Customers Management</h2>
-          <p className="text-gray-400">Manage all registered customers</p>
+          <h2 className="text-3xl font-bold tracking-tight">Customers Management</h2>
+          <p className="text-muted-foreground">Manage all customer accounts and information</p>
+          <div className="flex gap-4 mt-2 text-sm text-muted-foreground">
+            <span>Total: {totalCustomers}</span>
+            <span>Active: {activeCustomers}</span>
+            <span>Blocked: {blockedCustomers}</span>
+          </div>
         </div>
-        <TextField
-          placeholder="Search customers..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          sx={{
-            width: 300,
-            backgroundColor: '#1f2937',
-            borderRadius: '8px',
-            '& .MuiOutlinedInput-root': {
-              color: 'white',
-              '& fieldset': {
-                borderColor: '#374151',
-                borderRadius: '8px'
-              },
-              '&:hover fieldset': {
-                borderColor: '#4b5563'
-              },
-              '&.Mui-focused fieldset': {
-                borderColor: '#f97316'
-              }
-            },
-            '& .MuiInputLabel-root': {
-              color: '#9ca3af'
-            }
-          }}
-        />
+        <Button
+          onClick={() => setShowAddCustomer(true)}
+          className="gap-2"
+        >
+          <Plus className="h-4 w-4" />
+          Add Customer
+        </Button>
       </div>
 
-      {/* Customers DataGrid */}
-      <Box sx={{
-        height: 600,
-        width: '100%',
-        '& .MuiDataGrid-root': {
-          border: '1px solid #374151',
-          borderRadius: '12px',
-          backgroundColor: '#111827'
-        }
-      }}>
-        <DataGrid
-          rows={filteredCustomers}
-          columns={columns}
-          pageSize={10}
-          rowsPerPageOptions={[10]}
-          components={{ Toolbar: GridToolbar }}
-          sx={{
-            // Base styles
-            border: 'none',
-            color: 'white',
-            backgroundColor: '#111827',
+      {/* Customers Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>All Customers</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Customer</TableHead>
+                <TableHead>Contact</TableHead>
+                <TableHead>Total Bookings</TableHead>
+                <TableHead>Total Spent</TableHead>
+                <TableHead>Last Service</TableHead>
+                <TableHead>Join Date</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {customers.map((customer) => (
+                <TableRow key={customer.id}>
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+                        {customer.profilePic ? (
+                          <img
+                            src={customer.profilePic}
+                            alt={customer.name}
+                            className="h-10 w-10 rounded-full object-cover"
+                          />
+                        ) : (
+                          <User className="h-5 w-5 text-muted-foreground" />
+                        )}
+                      </div>
+                      <div>
+                        <div className="font-medium">{customer.name}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {customer.cars?.length || 0} cars
+                        </div>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Phone className="h-3 w-3" />
+                        <span className="text-sm">{customer.phone}</span>
+                      </div>
+                      {customer.email && (
+                        <div className="flex items-center gap-2">
+                          <Mail className="h-3 w-3" />
+                          <span className="text-sm">{customer.email}</span>
+                        </div>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline">
+                      {customer.totalBookings || 0}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1 font-semibold">
+                      <IndianRupee className="h-4 w-4" />
+                      {customer.totalSpent || 0}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Calendar className="h-3 w-3" />
+                      {customer.lastService || 'No services'}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="text-sm text-muted-foreground">
+                      {customer.joinDate}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={customer.isBlocked === true ? "destructive" : "default"}
+                      className={!customer.isBlocked === true ? "bg-green-100 text-green-800 hover:bg-green-100" : ""}
+                    >
+                      {customer.isBlocked === true ? 'Blocked' : 'Active'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => handleUpdateCustomerStatus(customer.id, !customer.isBlocked)}
+                          className={customer.isBlocked ? 'text-green-600' : 'text-yellow-600'}
+                        >
+                          {customer.isBlocked ? (
+                            <>
+                              <Shield className="h-4 w-4 mr-2" />
+                              Unblock Customer
+                            </>
+                          ) : (
+                            <>
+                              <ShieldOff className="h-4 w-4 mr-2" />
+                              Block Customer
+                            </>
+                          )}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => setSelectedCustomer(customer)}
+                        >
+                          <Edit className="h-4 w-4 mr-2" />
+                          View Details
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => setDeleteConfirm(customer.id)}
+                          className="text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete Customer
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
 
-            // Cell styles - Center content
-            '& .MuiDataGrid-cell': {
-              color: 'white',
-              borderBottom: '1px solid #374151',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              '&:focus': {
-                outline: 'none',
-              },
-              '&:focus-within': {
-                outline: 'none',
-              },
-            },
-
-            // Row hover and selection
-            '& .MuiDataGrid-row': {
-              color: 'white',
-              backgroundColor: '#111827',
-              '&:hover': {
-                backgroundColor: 'rgba(55, 65, 81, 0.5)',
-              },
-              '&.Mui-selected': {
-                backgroundColor: 'rgba(249, 115, 22, 0.16)',
-                '&:hover': {
-                  backgroundColor: 'rgba(249, 115, 22, 0.24)',
-                },
-              },
-            },
-
-            // Column headers - Center content
-            '& .MuiDataGrid-columnHeaders': {
-              backgroundColor: '#1f2937',
-              color: '#f3f4f6',
-              borderBottom: '1px solid #374151',
-              fontSize: '0.875rem',
-              fontWeight: '600',
-            },
-
-            // Column header cells
-            '& .MuiDataGrid-columnHeader': {
-              '&:focus': {
-                outline: 'none',
-              },
-              '&:focus-within': {
-                outline: 'none',
-              },
-              backgroundColor: '#1f2937',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            },
-
-            // Header title
-            '& .MuiDataGrid-columnHeaderTitle': {
-              fontWeight: '600',
-              color: '#f3f4f6',
-              textAlign: 'center',
-              width: '100%',
-            },
-
-            // Sort icon
-            '& .MuiDataGrid-iconButtonContainer': {
-              visibility: 'visible',
-              '& .MuiSvgIcon-root': {
-                color: '#9ca3af',
-                '&:hover': {
-                  color: '#f3f4f6',
-                },
-              },
-            },
-
-            // Menu icon
-            '& .MuiDataGrid-menuIcon': {
-              visibility: 'visible',
-              '& .MuiSvgIcon-root': {
-                color: '#9ca3af',
-                '&:hover': {
-                  color: '#f3f4f6',
-                },
-              },
-            },
-
-            // Toolbar
-            '& .MuiDataGrid-toolbarContainer': {
-              borderBottom: '1px solid #374151',
-              backgroundColor: '#1f2937',
-              padding: '16px',
-              '& .MuiButton-text': {
-                color: '#e5e7eb',
-                '&:hover': {
-                  backgroundColor: 'rgba(249, 115, 22, 0.1)',
-                  color: '#f97316',
-                },
-              },
-              '& .MuiInput-root': {
-                color: 'white',
-                '&:before': {
-                  borderBottomColor: '#6b7280',
-                },
-                '&:hover:before': {
-                  borderBottomColor: '#9ca3af',
-                },
-                '&:after': {
-                  borderBottomColor: '#f97316',
-                },
-              },
-              '& .MuiInputLabel-root': {
-                color: '#9ca3af',
-              },
-            },
-
-            // Checkbox
-            '& .MuiCheckbox-root': {
-              color: '#6b7280',
-              '&.Mui-checked': {
-                color: '#f97316',
-              },
-            },
-
-            // Pagination
-            '& .MuiTablePagination-root': {
-              color: '#d1d5db',
-              borderTop: '1px solid #374151',
-              backgroundColor: '#1f2937',
-              '& .MuiIconButton-root': {
-                color: '#e5e7eb',
-                '&:hover': {
-                  backgroundColor: 'rgba(249, 115, 22, 0.1)',
-                },
-                '&.Mui-disabled': {
-                  color: '#6b7280',
-                },
-              },
-              '& .MuiTablePagination-selectIcon': {
-                color: '#e5e7eb',
-              },
-            },
-
-            // Footer
-            '& .MuiDataGrid-footerContainer': {
-              borderTop: '1px solid #374151',
-              backgroundColor: '#1f2937',
-            },
-
-            // Selected row count
-            '& .MuiDataGrid-selectedRowCount': {
-              color: '#d1d5db',
-            },
-
-            // Action buttons
-            '& .MuiDataGrid-actionsCell': {
-              '& .MuiIconButton-root': {
-                color: '#e5e7eb',
-                '&:hover': {
-                  backgroundColor: 'rgba(249, 115, 22, 0.1)',
-                },
-              },
-            },
-
-            // Column separator
-            '& .MuiDataGrid-columnSeparator': {
-              color: '#374151',
-            },
-
-            // Virtual scroller
-            '& .MuiDataGrid-virtualScroller': {
-              backgroundColor: '#111827',
-            },
-          }}
-        />
-      </Box>
-
-      {/* Customer Details Modal */}
-      <Modal open={!!selectedCustomer} onClose={() => setSelectedCustomer(null)}>
-        <Box sx={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          width: { xs: '90%', md: '500px' },
-          bgcolor: '#1f2937',
-          border: '1px solid #374151',
-          borderRadius: '12px',
-          boxShadow: 24,
-          p: 4
-        }}>
-          {selectedCustomer && (
-            <>
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-bold text-white">Customer Details</h3>
-                <IconButton onClick={() => setSelectedCustomer(null)} sx={{ color: 'grey.400' }}>
-                  <X />
-                </IconButton>
-              </div>
-
-              <div className="space-y-6">
-                <div className="flex items-center space-x-4">
-                  <Avatar sx={{ width: 80, height: 80, bgcolor: '#3b82f6' }}>
-                    <User size={32} />
-                  </Avatar>
-                  <div>
-                    <Typography variant="h6" color="white">{selectedCustomer.name}</Typography>
-                    <Chip
-                      label={selectedCustomer.isBlocked ? 'Blocked' : 'Active'}
-                      color={selectedCustomer.isBlocked ? 'error' : 'success'}
-                      sx={{ mt: 1, color: 'white', fontWeight: 'bold' }}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Typography variant="body2" color="grey.400">Customer ID</Typography>
-                    <Typography variant="body1" color="white">{selectedCustomer.id}</Typography>
-                  </div>
-                  <div>
-                    <Typography variant="body2" color="grey.400">Join Date</Typography>
-                    <Typography variant="body1" color="white">{selectedCustomer.joinDate}</Typography>
-                  </div>
-                </div>
-
-                <div>
-                  <Typography variant="body2" color="grey.400">Contact Information</Typography>
-                  <Typography variant="body1" color="white">{selectedCustomer.email}</Typography>
-                  <Typography variant="body1" color="white">{selectedCustomer.phone}</Typography>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <Card sx={{ bgcolor: '#374151', borderRadius: '8px' }}>
-                    <CardContent>
-                      <Typography variant="body2" color="grey.400">Total Bookings</Typography>
-                      <Typography variant="h4" color="white">{selectedCustomer.totalBookings}</Typography>
-                    </CardContent>
-                  </Card>
-                  <Card sx={{ bgcolor: '#374151', borderRadius: '8px' }}>
-                    <CardContent>
-                      <Typography variant="body2" color="grey.400">Total Spent</Typography>
-                      <Typography variant="h4" color="white">
-                        ₹{selectedCustomer.totalSpent.toLocaleString()}
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                <div>
-                  <Typography variant="body2" color="grey.400">Last Service</Typography>
-                  <Typography variant="body1" color="white">{selectedCustomer.lastService}</Typography>
-                </div>
-
-                <Button
-                  variant={selectedCustomer.isBlocked ? "contained" : "outlined"}
-                  color={selectedCustomer.isBlocked ? "success" : "error"}
-                  fullWidth
-                  onClick={() => toggleCustomerBlock(selectedCustomer.id)}
-                  startIcon={selectedCustomer.isBlocked ? <CheckCircle /> : <Block />}
-                  sx={{
-                    ...(selectedCustomer.isBlocked ? {
-                      bgcolor: '#10b981',
-                      '&:hover': { bgcolor: '#059669' }
-                    } : {
-                      color: '#ef4444',
-                      borderColor: '#ef4444',
-                      '&:hover': {
-                        borderColor: '#dc2626',
-                        backgroundColor: 'rgba(239, 68, 68, 0.1)'
-                      }
-                    })
-                  }}
-                >
-                  {selectedCustomer.isBlocked ? 'Unblock Customer' : 'Block Customer'}
-                </Button>
-              </div>
-            </>
+          {customers.length === 0 && (
+            <div className="text-center py-12">
+              <div className="text-muted-foreground text-lg">No customers found</div>
+              <Button
+                onClick={() => setShowAddCustomer(true)}
+                className="mt-4 gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                Add Your First Customer
+              </Button>
+            </div>
           )}
-        </Box>
-      </Modal>
+        </CardContent>
+      </Card>
+
+      {/* Add Customer Dialog */}
+      <Dialog open={showAddCustomer} onOpenChange={setShowAddCustomer}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Add New Customer</DialogTitle>
+            <DialogDescription>
+              Create a new customer account.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="name">Full Name *</Label>
+              <Input
+                id="name"
+                value={newCustomer.name}
+                onChange={(e) => handleInputChange('name', e.target.value)}
+                placeholder="Enter customer name"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="phone">Phone Number *</Label>
+              <Input
+                id="phone"
+                value={newCustomer.phone}
+                onChange={(e) => handleInputChange('phone', e.target.value)}
+                placeholder="Enter phone number"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="email">Email Address</Label>
+              <Input
+                id="email"
+                type="email"
+                value={newCustomer.email}
+                onChange={(e) => handleInputChange('email', e.target.value)}
+                placeholder="Enter email address"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="password">Password *</Label>
+              <Input
+                id="password"
+                type="password"
+                value={newCustomer.password}
+                onChange={(e) => handleInputChange('password', e.target.value)}
+                placeholder="Enter password"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowAddCustomer(false)}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleAddCustomer}>
+              Add Customer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Customer Details Dialog */}
+      <Dialog open={!!selectedCustomer} onOpenChange={() => setSelectedCustomer(null)}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Customer Details</DialogTitle>
+          </DialogHeader>
+          {selectedCustomer && (
+            <div className="space-y-6">
+              {/* Customer Info */}
+              <div className="flex items-center gap-4">
+                <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center">
+                  {selectedCustomer.profilePic ? (
+                    <img
+                      src={selectedCustomer.profilePic}
+                      alt={selectedCustomer.name}
+                      className="h-16 w-16 rounded-full object-cover"
+                    />
+                  ) : (
+                    <User className="h-8 w-8 text-muted-foreground" />
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold">{selectedCustomer.name}</h3>
+                  <p className="text-muted-foreground">{selectedCustomer.email}</p>
+                </div>
+              </div>
+
+              {/* Stats Grid */}
+              <div className="grid grid-cols-2 gap-4">
+                <Card>
+                  <CardContent className="p-4 text-center">
+                    <div className="text-2xl font-bold text-primary">{selectedCustomer.totalBookings || 0}</div>
+                    <div className="text-sm text-muted-foreground">Total Bookings</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4 text-center">
+                    <div className="text-2xl font-bold text-primary">
+                      <IndianRupee className="inline h-5 w-5" />
+                      {selectedCustomer.totalSpent || 0}
+                    </div>
+                    <div className="text-sm text-muted-foreground">Total Spent</div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Contact Info */}
+              <div>
+                <h4 className="font-semibold mb-2">Contact Information</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-4 w-4" />
+                    <span>{selectedCustomer.phone}</span>
+                  </div>
+                  {selectedCustomer.email && (
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-4 w-4" />
+                      <span>{selectedCustomer.email}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Vehicle Info */}
+              <div>
+                <h4 className="font-semibold mb-2">Vehicles ({selectedCustomer.cars?.length || 0})</h4>
+                {selectedCustomer.cars && selectedCustomer.cars.length > 0 ? (
+                  <div className="space-y-2">
+                    {selectedCustomer.cars.map((car, index) => (
+                      <div key={index} className="flex items-center gap-2 p-2 border rounded-lg">
+                        <Car className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <div className="font-medium">{car.carname} {car.carmodel}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {car.caryear} • {car.carlicenseplate}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No vehicles registered</p>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the customer account and all associated data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => handleDeleteCustomer(deleteConfirm)}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </motion.div>
   );
 };

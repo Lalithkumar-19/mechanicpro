@@ -5,6 +5,7 @@ import {
   Wrench, Settings, Droplets, Palette, Sparkles, Zap, 
   Cog, Shield, FileCheck, Car, RotateCcw, ArrowRight 
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const ServiceCard = ({ category, services, icon, index, isExpanded, onToggle }) => {
   const [ref, inView] = useInView({
@@ -72,7 +73,7 @@ const OurServices = () => {
     triggerOnce: true,
     threshold: 0.1,
   });
-
+ const navigate = useNavigate();
   const serviceCategories = [
     {
       category: "AC Services",
@@ -246,7 +247,9 @@ const OurServices = () => {
           <h3 className="text-3xl font-bold text-white mb-6">
             Need Professional Car Service?
           </h3>
-          <button className="cursor-pointer group relative px-8 py-4 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-orange-500/25 overflow-hidden">
+          <button 
+          onClick={() => navigate("/find-mechanics")}
+          className="cursor-pointer group relative px-8 py-4 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-orange-500/25 overflow-hidden">
             <span className="relative z-10 flex items-center justify-center space-x-2">
               <Wrench className="w-5 h-5" />
               <span>Find Mechanic & Book Service Now</span>

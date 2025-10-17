@@ -1,828 +1,983 @@
-import React, { useState } from 'react';
-import {
-  DataGrid,
-  GridToolbar,
-  GridActionsCellItem
-} from '@mui/x-data-grid';
-import {
-  Box,
-  Button,
-  Modal,
-  TextField,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  Chip,
-  IconButton,
-  Typography,
-  Card,
-  CardContent
-} from '@mui/material';
-import {
-  Edit,
-  Delete,
-  Visibility,
-  Cancel,
-  CheckCircle,
-  PlayArrow
-} from '@mui/icons-material';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { X } from 'lucide-react';
+import { toast } from 'sonner';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Eye,
+  Edit,
+  Trash2,
+  CheckCircle,
+  XCircle,
+  Play,
+  Plus,
+  MoreHorizontal,
+  User,
+  Car,
+  Wrench,
+} from 'lucide-react';
+import axiosInstance from '../../utils/adminaxios';
 
-const BookingsManagement = ({ bookings, setBookings, mechanics, addNotification }) => {
+const BookingsManagement = ({ addNotification }) => {
+  const [bookings, setBookings] = useState([]);
+  const [mechanics, setMechanics] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [mechanicsLoading, setMechanicsLoading] = useState(true);
   const [selectedBooking, setSelectedBooking] = useState(null);
+  const [viewModal, setViewModal] = useState(false);
   const [reassignModal, setReassignModal] = useState({ open: false, bookingId: null });
+  const [addBookingModal, setAddBookingModal] = useState(false);
+  const [deleteConfirmModal, setDeleteConfirmModal] = useState({ open: false, bookingId: null });
 
-  // Handle Booking Actions (Accept, Decline, Start Service, Complete, etc.)
-  const handleBookingAction = (bookingId, action) => {
-    setBookings(prev => prev.map(booking => {
-      if (booking.id === bookingId) {
-        let newStatus = booking.status;
+  const [newBooking, setNewBooking] = useState({
+    customer: {
+      name: '',
+      phone: '',
+      email: ''
+    },
+    vehicle: {
+      make: '',
+      model: '',
+      year: '',
+      plateNumber: ''
+    },
+    serviceType: '',
+    dateTime: '',
+    amount: '',
+    spareParts: [],
+    notes: ''
+  });
+
+  // Fetch all bookings
+  const fetchBookings = async () => {
+    try {
+      setLoading(true);
+      const res = await axiosInstance.get("/admin/get-all-bookings");
+      console.log('Bookings API Response:', res.data);
+
+      if (res.status === 200) {
+        let bookingsData = [];
+
+        if (Array.isArray(res.data)) {
+          bookingsData = res.data;
+        } else if (res.data && Array.isArray(res.data.data)) {
+          bookingsData = res.data.data;
+        }
+
+        if (bookingsData.length > 0) {
+          setBookings(bookingsData);
+        } else {
+          setBookings([]);
+          showToast('No bookings found', 'info');
+        }
+      } else {
+        showToast('Failed to fetch bookings', 'error');
+      }
+    } catch (error) {
+      console.error('Error fetching bookings:', error);
+      showToast('Error fetching bookings: ' + (error.response?.data?.message || error.message), 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch mechanics
+  const fetchMechanics = async () => {
+    try {
+      setMechanicsLoading(true);
+      const res = await axiosInstance.get("/admin/get-all-mechanics");
+      if (res.status === 200 && res.data && Array.isArray(res.data.data)) {
+        setMechanics(res.data.data);
+      } else if (res.status === 200 && Array.isArray(res.data)) {
+        setMechanics(res.data);
+      } else {
+        setMechanics([]);
+      }
+    } catch (error) {
+      console.error('Error fetching mechanics:', error);
+      setMechanics([]);
+    } finally {
+      setMechanicsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBookings();
+    fetchMechanics();
+  }, []);
+
+  const showToast = (message, type = 'default') => {
+    switch (type) {
+      case 'error':
+        toast.error(message);
+        break;
+      case 'success':
+        toast.success(message);
+        break;
+      case 'info':
+        toast.info(message);
+        break;
+      default:
+        toast(message);
+    }
+  };
+
+  // Handle Booking Actions
+  const handleBookingAction = async (bookingId, action) => {
+    try {
+      console.log('Handling booking action:', { bookingId, action });
+      const res = await axiosInstance.put("/admin/handle-booking-action", {
+        bookingId: bookingId,
+        action
+      });
+
+      if (res.status === 200) {
+        setBookings(prev => prev.map(booking =>
+          booking._id === bookingId ? res.data.data : booking
+        ));
+
         let message = '';
-
         switch (action) {
-          case 'accept':
-            newStatus = 'confirmed';
-            message = 'Booking accepted';
-            break;
-          case 'decline':
-            newStatus = 'cancelled';
-            message = 'Booking declined';
-            break;
-          case 'start':
-            newStatus = 'in-progress';
-            message = 'Service started';
-            break;
-          case 'complete':
-            newStatus = 'completed';
-            message = 'Service completed';
-            break;
-          case 'cancel':
-            newStatus = 'cancelled';
-            message = 'Booking cancelled';
-            break;
-          default:
-            return booking;
+          case 'accept': message = 'Booking accepted'; break;
+          case 'decline': message = 'Booking declined'; break;
+          case 'start': message = 'Service started'; break;
+          case 'complete': message = 'Service completed'; break;
+          case 'cancel': message = 'Booking cancelled'; break;
+          default: return;
         }
 
         addNotification(`${message} for booking ${bookingId}`, 'booking');
-        return { ...booking, status: newStatus };
+        showToast(message, 'success');
+      } else {
+        showToast(res.data?.message || 'Failed to perform action', 'error');
       }
-      return booking;
-    }));
+    } catch (error) {
+      console.error('Error performing booking action:', error);
+      showToast('Error performing booking action: ' + (error.response?.data?.message || error.message), 'error');
+    }
   };
 
   // Update Booking Status
-  const updateBookingStatus = (bookingId, newStatus) => {
-    setBookings(prev => prev.map(booking =>
-      booking.id === bookingId ? { ...booking, status: newStatus } : booking
-    ));
-    addNotification(`Booking ${bookingId} status updated to ${newStatus}`, 'booking');
+  const updateBookingStatus = async (bookingId, newStatus) => {
+    try {
+      const res = await axiosInstance.put("/admin/update-booking-status", {
+        bookingId: bookingId,
+        status: newStatus
+      });
+
+      if (res.data && res.data.success) {
+        setBookings(prev => prev.map(booking =>
+          booking._id === bookingId ? res.data.data : booking
+        ));
+
+        addNotification(`Booking ${bookingId} status updated to ${newStatus}`, 'booking');
+        showToast('Booking status updated successfully', 'success');
+      } else {
+        showToast(res.data?.message || 'Failed to update booking status', 'error');
+      }
+    } catch (error) {
+      console.error('Error updating booking status:', error);
+      showToast('Error updating booking status: ' + (error.response?.data?.message || error.message), 'error');
+    }
   };
 
   // Reassign Mechanic
-  const reassignMechanic = (bookingId, newMechanicId) => {
-    const mechanic = mechanics.find(m => m.id === newMechanicId);
-    if (mechanic) {
-      setBookings(prev => prev.map(booking =>
-        booking.id === bookingId ? {
-          ...booking,
-          mechanic: { id: mechanic.id, name: mechanic.name }
-        } : booking
-      ));
-      addNotification(`Booking ${bookingId} reassigned to ${mechanic.name}`, 'booking');
-      setReassignModal({ open: false, bookingId: null });
+  const reassignMechanic = async (bookingId, newMechanicId) => {
+    try {
+      const res = await axiosInstance.put("/admin/reassign-mechanic", {
+        bookingId: bookingId,
+        mechanicId: newMechanicId
+      });
+
+      if (res.data && res.data.success) {
+        setBookings(prev => prev.map(booking =>
+          booking._id === bookingId ? res.data.data : booking
+        ));
+
+        const mechanic = mechanics.find(m => m._id === newMechanicId);
+        addNotification(`Booking ${bookingId} reassigned to ${mechanic?.name || 'mechanic'}`, 'booking');
+        setReassignModal({ open: false, bookingId: null });
+        showToast('Mechanic reassigned successfully', 'success');
+      } else {
+        showToast(res.data?.message || 'Failed to reassign mechanic', 'error');
+      }
+    } catch (error) {
+      console.error('Error reassigning mechanic:', error);
+      showToast('Error reassigning mechanic: ' + (error.response?.data?.message || error.message), 'error');
     }
   };
 
-  // Get appropriate action buttons based on booking status
-  const getActionButtons = (params) => {
-    const actions = [];
+  // Add New Booking
+  const handleAddBooking = async () => {
+    try {
+      if (!newBooking.customer.name || !newBooking.customer.phone ||
+        !newBooking.vehicle.make || !newBooking.vehicle.model ||
+        !newBooking.vehicle.plateNumber || !newBooking.serviceType ||
+        !newBooking.dateTime || !newBooking.amount) {
+        showToast('Please fill all required fields', 'error');
+        return;
+      }
 
-    // View details button for all statuses
-    actions.push(
-      <GridActionsCellItem
-        icon={<Visibility />}
-        label="View Details"
-        onClick={() => setSelectedBooking(params.row)}
-        sx={{
-          color: '#60a5fa',
-          '&:hover': {
-            color: '#3b82f6',
-            backgroundColor: 'rgba(96, 165, 250, 0.1)'
-          }
-        }}
-      />
+      // Prepare data for the new schema
+      const bookingData = {
+        customer: {
+          name: newBooking.customer.name,
+          phone: newBooking.customer.phone,
+          email: newBooking.customer.email || ''
+        },
+        vehicle: {
+          make: newBooking.vehicle.make,
+          model: newBooking.vehicle.model,
+          year: newBooking.vehicle.year || '',
+          plateNumber: newBooking.vehicle.plateNumber
+        },
+        serviceType: newBooking.serviceType,
+        dateTime: newBooking.dateTime,
+        amount: parseFloat(newBooking.amount),
+        spareParts: newBooking.spareParts || [],
+        notes: newBooking.notes || ''
+      };
+
+      console.log('Sending booking data:', bookingData);
+
+      const res = await axiosInstance.post("/admin/create-booking", bookingData);
+
+      if (res.data && res.data.success) {
+        setBookings(prev => [res.data.data, ...prev]);
+        setAddBookingModal(false);
+        setNewBooking({
+          customer: { name: '', phone: '', email: '' },
+          vehicle: { make: '', model: '', year: '', plateNumber: '' },
+          serviceType: '',
+          dateTime: '',
+          amount: '',
+          spareParts: [],
+          notes: ''
+        });
+        addNotification(`New booking created for ${res.data.data.customer.name}`, 'booking');
+        showToast('Booking created successfully', 'success');
+      } else {
+        showToast(res.data?.message || 'Failed to create booking', 'error');
+      }
+    } catch (error) {
+      console.error('Error creating booking:', error);
+      console.error('Error details:', error.response?.data);
+      showToast('Error creating booking: ' + (error.response?.data?.message || error.message), 'error');
+    }
+  };
+
+  // Delete Booking
+  const handleDeleteBooking = async (bookingId) => {
+    try {
+      const res = await axiosInstance.delete(`/admin/delete-booking/${bookingId}`);
+
+      if (res.data && res.data.success) {
+        setBookings(prev => prev.filter(booking => booking._id !== bookingId));
+        addNotification('Booking deleted', 'booking');
+        setDeleteConfirmModal({ open: false, bookingId: null });
+        showToast('Booking deleted successfully', 'success');
+      } else {
+        showToast(res.data?.message || 'Failed to delete booking', 'error');
+      }
+    } catch (error) {
+      console.error('Error deleting booking:', error);
+      showToast('Error deleting booking: ' + (error.response?.data?.message || error.message), 'error');
+    }
+  };
+
+  // Get status badge variant
+  const getStatusVariant = (status) => {
+    switch (status) {
+      case 'pending': return 'secondary';
+      case 'confirmed': return 'default';
+      case 'in-progress': return 'default';
+      case 'completed': return 'default';
+      case 'cancelled': return 'destructive';
+      default: return 'secondary';
+    }
+  };
+
+  // Format date
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  // Safe value getter
+  const getSafeValue = (obj, path, defaultValue = 'N/A') => {
+    try {
+      const keys = path.split('.');
+      let value = obj;
+      for (const key of keys) {
+        value = value?.[key];
+        if (value === undefined || value === null) return defaultValue;
+      }
+      return value || defaultValue;
+    } catch (error) {
+      return defaultValue;
+    }
+  };
+
+  console.log("bookings", bookings);
+  console.log("mechanics", mechanics);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-96">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <span className="ml-3 text-lg">Loading bookings...</span>
+      </div>
     );
-
-    // Status-specific actions
-    switch (params.row.status) {
-      case 'pending':
-        actions.push(
-          <GridActionsCellItem
-            icon={<CheckCircle />}
-            label="Accept Booking"
-            onClick={() => handleBookingAction(params.row.id, 'accept')}
-            sx={{
-              color: '#34d399',
-              '&:hover': {
-                color: '#10b981',
-                backgroundColor: 'rgba(52, 211, 153, 0.1)'
-              }
-            }}
-          />,
-          <GridActionsCellItem
-            icon={<Cancel />}
-            label="Decline Booking"
-            onClick={() => handleBookingAction(params.row.id, 'decline')}
-            sx={{
-              color: '#ef4444',
-              '&:hover': {
-                color: '#dc2626',
-                backgroundColor: 'rgba(239, 68, 68, 0.1)'
-              }
-            }}
-          />
-        );
-        break;
-      case 'confirmed':
-        actions.push(
-          <GridActionsCellItem
-            icon={<PlayArrow />}
-            label="Start Service"
-            onClick={() => handleBookingAction(params.row.id, 'start')}
-            sx={{
-              color: '#f59e0b',
-              '&:hover': {
-                color: '#d97706',
-                backgroundColor: 'rgba(245, 158, 11, 0.1)'
-              }
-            }}
-          />,
-          <GridActionsCellItem
-            icon={<Edit />}
-            label="Reassign Mechanic"
-            onClick={() => setReassignModal({ open: true, bookingId: params.row.id })}
-            sx={{
-              color: '#8b5cf6',
-              '&:hover': {
-                color: '#7c3aed',
-                backgroundColor: 'rgba(139, 92, 246, 0.1)'
-              }
-            }}
-          />
-        );
-        break;
-      case 'in-progress':
-        actions.push(
-          <GridActionsCellItem
-            icon={<CheckCircle />}
-            label="Mark Complete"
-            onClick={() => handleBookingAction(params.row.id, 'complete')}
-            sx={{
-              color: '#34d399',
-              '&:hover': {
-                color: '#10b981',
-                backgroundColor: 'rgba(52, 211, 153, 0.1)'
-              }
-            }}
-          />
-        );
-        break;
-      default:
-        // For completed or cancelled bookings, only show view details
-        break;
-    }
-
-    // Cancel button for all active statuses
-    if (['pending', 'confirmed', 'in-progress'].includes(params.row.status)) {
-      actions.push(
-        <GridActionsCellItem
-          icon={<Cancel />}
-          label="Cancel Booking"
-          onClick={() => handleBookingAction(params.row.id, 'cancel')}
-          sx={{
-            color: '#ef4444',
-            '&:hover': {
-              color: '#dc2626',
-              backgroundColor: 'rgba(239, 68, 68, 0.1)'
-            }
-          }}
-        />
-      );
-    }
-
-    return actions;
-  };
-
-  // DataGrid Columns
-  const columns = [
-    {
-      field: 'id',
-      headerName: 'Booking ID',
-      width: 130,
-      renderCell: (params) => (
-        <Typography variant="body2" color="white" fontWeight="bold">
-          {params.value}
-        </Typography>
-      )
-    },
-    {
-      field: 'customer',
-      headerName: 'Customer',
-      width: 180,
-      valueGetter: (params) => {
-        if (!params?.row?.customer) return 'N/A';
-        return params.row.customer?.name || 'Unknown';
-      },
-      renderCell: (params) => {
-        const customer = params?.row?.customer || {};
-        return (
-          <Box height={20}>
-            <Typography variant="body2" fontWeight="bold" color="white">
-              {customer.name || 'Unknown'}
-            </Typography>
-            <Typography variant="caption" color="grey.400">
-              {customer.phone || 'N/A'}
-            </Typography>
-          </Box>
-        );
-      }
-    },
-    {
-      field: 'vehicle',
-      headerName: 'Vehicle',
-      width: 180,
-      valueGetter: (params) => {
-        if (!params.row?.vehicle) return 'N/A';
-        return params.row.vehicle.model || `${params.row.vehicle.make} ${params.row.vehicle.model}`.trim() || 'N/A';
-      },
-      renderCell: (params) => {
-        const vehicle = params.row.vehicle || {};
-        return (
-          <Box>
-            <Typography variant="body2" fontWeight="bold" color="white">
-              {vehicle.make || 'Vehicle'} {vehicle.model || ''}
-            </Typography>
-            <Typography variant="caption" color="grey.400">
-              {vehicle.plateNumber || 'N/A'}
-            </Typography>
-          </Box>
-        );
-      }
-    },
-    {
-      field: 'dateTime',
-      headerName: 'Date/Time',
-      width: 150,
-      renderCell: (params) => (
-        <Typography variant="body2" color="white">
-          {params.value}
-        </Typography>
-      )
-    },
-    {
-      field: 'serviceType',
-      headerName: 'Service',
-      width: 150,
-      renderCell: (params) => (
-        <Typography variant="body2" color="white">
-          {params.value}
-        </Typography>
-      )
-    },
-    {
-      field: 'mechanic',
-      headerName: 'Mechanic',
-      width: 180,
-      valueGetter: (params) => {
-        if (!params?.row?.mechanic) return 'Not Assigned';
-        return params.row.mechanic?.name || 'Unknown Mechanic';
-      },
-      renderCell: (params) => {
-        const mechanic = params?.row?.mechanic || {};
-        return (
-          <Box>
-            <Typography variant="body2" fontWeight="bold" color="white">
-              {mechanic.name || 'Not Assigned'}
-            </Typography>
-            <Typography variant="caption" color="grey.400">
-              {mechanic.rating ? `★ ${mechanic.rating}` : 'No rating'}
-            </Typography>
-          </Box>
-        );
-      }
-    },
-    {
-      field: 'amount',
-      headerName: 'Amount',
-      width: 120,
-      renderCell: (params) => (
-        <Typography variant="body2" fontWeight="bold" color="orange.500">
-          ₹{params.value}
-        </Typography>
-      )
-    },
-    {
-      field: 'status',
-      headerName: 'Status',
-      width: 150,
-      renderCell: (params) => (
-        <Select
-          value={params.value}
-          onChange={(e) => updateBookingStatus(params.row.id, e.target.value)}
-          size="small"
-          sx={{
-            color: 'white',
-            backgroundColor: '#1f2937',
-            '& .MuiOutlinedInput-notchedOutline': {
-              border: '1px solid #374151',
-              borderRadius: '6px'
-            },
-            '&:hover .MuiOutlinedInput-notchedOutline': {
-              borderColor: '#4b5563'
-            },
-            '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-              borderColor: '#f97316'
-            },
-            '& .MuiSelect-select': {
-              py: 0.5,
-              color: 'white'
-            },
-            '& .MuiSvgIcon-root': {
-              color: '#9ca3af'
-            }
-          }}
-        >
-          <MenuItem value="pending">
-            <Chip label="Pending" color="warning" size="small" sx={{ color: 'white' }} />
-          </MenuItem>
-          <MenuItem value="confirmed">
-            <Chip label="Confirmed" color="info" size="small" sx={{ color: 'white' }} />
-          </MenuItem>
-          <MenuItem value="in-progress">
-            <Chip label="In Progress" color="primary" size="small" sx={{ color: 'white' }} />
-          </MenuItem>
-          <MenuItem value="completed">
-            <Chip label="Completed" color="success" size="small" sx={{ color: 'white' }} />
-          </MenuItem>
-          <MenuItem value="cancelled">
-            <Chip label="Cancelled" color="error" size="small" sx={{ color: 'white' }} />
-          </MenuItem>
-        </Select>
-      )
-    },
-    {
-      field: 'actions',
-      headerName: 'Actions',
-      width: 200,
-      type: 'actions',
-      getActions: (params) => getActionButtons(params)
-    }
-  ];
+  }
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="space-y-6"
+      className="space-y-6 p-6"
     >
+      {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold text-white mb-2">Bookings Management</h2>
-          <p className="text-gray-400">Manage all service bookings</p>
+          <h2 className="text-3xl font-bold tracking-tight">Bookings Management</h2>
+          <p className="text-muted-foreground">Manage all service bookings</p>
+          <div className="flex gap-4 mt-2 text-sm text-muted-foreground">
+            <span>Total: {bookings.length}</span>
+            <span>Pending: {bookings.filter(b => b.status === 'pending').length}</span>
+            <span>In Progress: {bookings.filter(b => b.status === 'in-progress').length}</span>
+            <span>Completed: {bookings.filter(b => b.status === 'completed').length}</span>
+          </div>
         </div>
-        <Box sx={{ display: 'flex', gap: 2 }}>
-          <FormControl sx={{ minWidth: 150 }}>
-            <InputLabel sx={{ color: 'grey.400' }}>Filter Status</InputLabel>
-            <Select
-              label="Filter Status"
-              defaultValue="all"
-              sx={{
-                color: 'white',
-                backgroundColor: '#1f2937',
-                '& .MuiOutlinedInput-notchedOutline': {
-                  borderColor: '#374151'
-                },
-                '&:hover .MuiOutlinedInput-notchedOutline': {
-                  borderColor: '#4b5563'
-                },
-                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                  borderColor: '#f97316'
-                },
-                '& .MuiSvgIcon-root': {
-                  color: '#9ca3af'
-                }
-              }}
-            >
-              <MenuItem value="all" sx={{ color: 'white' }}>All Status</MenuItem>
-              <MenuItem value="pending" sx={{ color: 'white' }}>Pending</MenuItem>
-              <MenuItem value="confirmed" sx={{ color: 'white' }}>Confirmed</MenuItem>
-              <MenuItem value="in-progress" sx={{ color: 'white' }}>In Progress</MenuItem>
-              <MenuItem value="completed" sx={{ color: 'white' }}>Completed</MenuItem>
-              <MenuItem value="cancelled" sx={{ color: 'white' }}>Cancelled</MenuItem>
-            </Select>
-          </FormControl>
-        </Box>
+        <Button onClick={() => setAddBookingModal(true)} className="gap-2">
+          <Plus className="h-4 w-4" />
+          Add Booking
+        </Button>
       </div>
 
-      {/* Bookings DataGrid */}
-      <Box sx={{
-        height: 600,
-        width: '100%',
-        '& .MuiDataGrid-root': {
-          border: '1px solid #374151',
-          borderRadius: '12px',
-          backgroundColor: '#111827'
-        }
-      }}>
-        <DataGrid
-          rows={bookings}
-          columns={columns}
-          pageSize={10}
-          rowsPerPageOptions={[10]}
-          components={{ Toolbar: GridToolbar }}
-          sx={{
-            // Base styles
-            border: 'none',
-            color: 'white',
-            backgroundColor: '#111827',
+      {/* Bookings Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>All Bookings</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Booking ID</TableHead>
+                <TableHead>Customer</TableHead>
+                <TableHead>Vehicle</TableHead>
+                <TableHead>Date/Time</TableHead>
+                <TableHead>Service</TableHead>
+                <TableHead>Mechanic</TableHead>
+                <TableHead>Amount</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {bookings.map((booking) => (
+                <TableRow key={booking._id}>
+                  <TableCell className="font-mono">
+                    #{booking._id ? booking._id.slice(-6).toUpperCase() : 'N/A'}
+                  </TableCell>
+                  <TableCell>
+                    <div>
+                      <div className="font-medium">
+                        {booking.customer?.name || 'Unknown'}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {booking.customer?.phone || 'N/A'}
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div>
+                      <div className="font-medium">
+                        {booking.vehicle?.make || ''} {booking.vehicle?.model || ''}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {booking.vehicle?.plateNumber || 'N/A'}
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>{formatDate(booking.dateTime)}</TableCell>
+                  <TableCell>{booking.serviceType || 'N/A'}</TableCell>
+                  <TableCell>
+                    <div>
+                      <div className="font-medium">
+                        {booking.mechanic?.name || 'Not Assigned'}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {booking.mechanic?.rating ? `★ ${booking.mechanic.rating}` : 'No rating'}
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="font-semibold text-primary">
+                    ₹{booking.amount || '0'}
+                  </TableCell>
+                  <TableCell>
+                    <Select
+                      value={booking.status || 'pending'}
+                      onValueChange={(value) => updateBookingStatus(booking._id, value)}
+                    >
+                      <SelectTrigger className="w-32">
+                        <SelectValue>
+                          <Badge variant={getStatusVariant(booking.status)}>
+                            {booking.status || 'pending'}
+                          </Badge>
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pending">
+                          <Badge variant="secondary">Pending</Badge>
+                        </SelectItem>
+                        <SelectItem value="confirmed">
+                          <Badge variant="default">Confirmed</Badge>
+                        </SelectItem>
+                        <SelectItem value="in-progress">
+                          <Badge variant="default">In Progress</Badge>
+                        </SelectItem>
+                        <SelectItem value="completed">
+                          <Badge variant="default">Completed</Badge>
+                        </SelectItem>
+                        <SelectItem value="cancelled">
+                          <Badge variant="destructive">Cancelled</Badge>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => {
+                          setSelectedBooking(booking);
+                          setViewModal(true);
+                        }}>
+                          <Eye className="h-4 w-4 mr-2" />
+                          View Details
+                        </DropdownMenuItem>
 
-            // Cell styles
-            '& .MuiDataGrid-cell': {
-              color: 'white',
-              borderBottom: '1px solid #374151',
-              '&:focus': {
-                outline: 'none',
-              },
-              '&:focus-within': {
-                outline: 'none',
-              },
-            },
+                        {/* Status-specific actions */}
+                        {booking.status === 'pending' && (
+                          <>
+                            <DropdownMenuItem onClick={() => handleBookingAction(booking._id, 'accept')}>
+                              <CheckCircle className="h-4 w-4 mr-2" />
+                              Accept Booking
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleBookingAction(booking._id, 'decline')}>
+                              <XCircle className="h-4 w-4 mr-2" />
+                              Decline Booking
+                            </DropdownMenuItem>
+                          </>
+                        )}
 
-            // Row hover and selection
-            '& .MuiDataGrid-row': {
-              color: 'white',
-              backgroundColor: '#111827',
-              '&:hover': {
-                backgroundColor: 'rgba(55, 65, 81, 0.5)',
-              },
-              '&.Mui-selected': {
-                backgroundColor: 'rgba(249, 115, 22, 0.16)',
-                '&:hover': {
-                  backgroundColor: 'rgba(249, 115, 22, 0.24)',
-                },
-              },
-            },
+                        {booking.status === 'confirmed' && (
+                          <>
+                            <DropdownMenuItem onClick={() => handleBookingAction(booking._id, 'start')}>
+                              <Play className="h-4 w-4 mr-2" />
+                              Start Service
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setReassignModal({ open: true, bookingId: booking._id })}>
+                              <Edit className="h-4 w-4 mr-2" />
+                              Reassign Mechanic
+                            </DropdownMenuItem>
+                          </>
+                        )}
 
-            // Column headers
-            '& .MuiDataGrid-columnHeaders': {
-              backgroundColor: '#1f2937',
-              color: '#f3f4f6',
-              borderBottom: '1px solid #374151',
-              fontSize: '0.875rem',
-              fontWeight: '600',
-            },
+                        {booking.status === 'in-progress' && (
+                          <DropdownMenuItem onClick={() => handleBookingAction(booking._id, 'complete')}>
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            Mark Complete
+                          </DropdownMenuItem>
+                        )}
 
-            // Column header cells
-            '& .MuiDataGrid-columnHeader': {
-              '&:focus': {
-                outline: 'none',
-              },
-              '&:focus-within': {
-                outline: 'none',
-              },
-              backgroundColor: '#1f2937',
-            },
+                        {/* Cancel button for active statuses */}
+                        {['pending', 'confirmed', 'in-progress'].includes(booking.status) && (
+                          <DropdownMenuItem onClick={() => handleBookingAction(booking._id, 'cancel')}>
+                            <XCircle className="h-4 w-4 mr-2" />
+                            Cancel Booking
+                          </DropdownMenuItem>
+                        )}
 
-            // Header title
-            '& .MuiDataGrid-columnHeaderTitle': {
-              fontWeight: '600',
-              color: '#f3f4f6',
-            },
+                        {/* Delete button for completed/cancelled */}
+                        {['completed', 'cancelled'].includes(booking.status) && (
+                          <DropdownMenuItem
+                            onClick={() => setDeleteConfirmModal({ open: true, bookingId: booking._id })}
+                            className="text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete Booking
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
 
-            // Sort icon
-            '& .MuiDataGrid-iconButtonContainer': {
-              visibility: 'visible',
-              '& .MuiSvgIcon-root': {
-                color: '#9ca3af',
-                '&:hover': {
-                  color: '#f3f4f6',
-                },
-              },
-            },
+          {bookings.length === 0 && (
+            <div className="text-center py-12">
+              <div className="text-muted-foreground text-lg">No bookings found</div>
+              <Button
+                onClick={() => setAddBookingModal(true)}
+                className="mt-4 gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                Create Your First Booking
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-            // Menu icon
-            '& .MuiDataGrid-menuIcon': {
-              visibility: 'visible',
-              '& .MuiSvgIcon-root': {
-                color: '#9ca3af',
-                '&:hover': {
-                  color: '#f3f4f6',
-                },
-              },
-            },
+      {/* View Details Modal */}
+      <Dialog open={viewModal} onOpenChange={setViewModal}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
+          <DialogHeader className="flex-shrink-0">
+            <DialogTitle>Booking Details</DialogTitle>
+          </DialogHeader>
 
-            // Toolbar
-            '& .MuiDataGrid-toolbarContainer': {
-              borderBottom: '1px solid #374151',
-              backgroundColor: '#1f2937',
-              padding: '16px',
-              '& .MuiButton-text': {
-                color: '#e5e7eb',
-                '&:hover': {
-                  backgroundColor: 'rgba(249, 115, 22, 0.1)',
-                  color: '#f97316',
-                },
-              },
-              '& .MuiInput-root': {
-                color: 'white',
-                '&:before': {
-                  borderBottomColor: '#6b7280',
-                },
-                '&:hover:before': {
-                  borderBottomColor: '#9ca3af',
-                },
-                '&:after': {
-                  borderBottomColor: '#f97316',
-                },
-              },
-              '& .MuiInputLabel-root': {
-                color: '#9ca3af',
-              },
-            },
+          <div className="overflow-y-auto flex-1 pr-2 -mr-2">
+            {selectedBooking && (
+              <div className="space-y-4 pb-4">
+                {/* Customer Information */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <User className="h-5 w-5" />
+                      Customer Information
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="flex flex-col gap-1.5">
+                    <div>
+                      <Label className="text-sm text-muted-foreground">Name</Label>
+                      <p className="font-medium">{selectedBooking.customer?.name || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm text-muted-foreground">Phone</Label>
+                      <p className="font-medium">{selectedBooking.customer?.phone || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm text-muted-foreground">Email</Label>
+                      <p className="font-medium">{selectedBooking.customer?.email || 'N/A'}</p>
+                    </div>
+                  </CardContent>
+                </Card>
 
-            // Checkbox
-            '& .MuiCheckbox-root': {
-              color: '#6b7280',
-              '&.Mui-checked': {
-                color: '#f97316',
-              },
-            },
+                {/* Vehicle Information */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <Car className="h-5 w-5" />
+                      Vehicle Information
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div>
+                      <Label className="text-sm text-muted-foreground">Make</Label>
+                      <p className="font-medium">{selectedBooking.vehicle?.make || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm text-muted-foreground">Model</Label>
+                      <p className="font-medium">{selectedBooking.vehicle?.model || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm text-muted-foreground">Year</Label>
+                      <p className="font-medium">{selectedBooking.vehicle?.year || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm text-muted-foreground">Plate Number</Label>
+                      <p className="font-medium">{selectedBooking.vehicle?.plateNumber || 'N/A'}</p>
+                    </div>
+                  </CardContent>
+                </Card>
 
-            // Pagination
-            '& .MuiTablePagination-root': {
-              color: '#d1d5db',
-              borderTop: '1px solid #374151',
-              backgroundColor: '#1f2937',
-              '& .MuiIconButton-root': {
-                color: '#e5e7eb',
-                '&:hover': {
-                  backgroundColor: 'rgba(249, 115, 22, 0.1)',
-                },
-                '&.Mui-disabled': {
-                  color: '#6b7280',
-                },
-              },
-              '& .MuiTablePagination-selectIcon': {
-                color: '#e5e7eb',
-              },
-            },
+                {/* Service Information */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <Wrench className="h-5 w-5" />
+                      Service Information
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="flex flex-col gap-1.5">
+                    <div>
+                      <Label className="text-sm text-muted-foreground">Service Type</Label>
+                      <p className="font-medium">{selectedBooking.serviceType || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm text-muted-foreground">Date & Time</Label>
+                      <p className="font-medium">
+                        {selectedBooking.dateTime ? new Date(selectedBooking.dateTime).toLocaleString() : 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <Label className="text-sm text-muted-foreground">Amount</Label>
+                      <p className="font-medium text-primary">₹{selectedBooking.amount || '0'}</p>
+                    </div>
+                  </CardContent>
+                </Card>
 
-            // Footer
-            '& .MuiDataGrid-footerContainer': {
-              borderTop: '1px solid #374151',
-              backgroundColor: '#1f2937',
-            },
+                {/* Mechanic Information */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <User className="h-5 w-5" />
+                      Mechanic Information
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm text-muted-foreground">Mechanic</Label>
+                      <p className="font-medium">{selectedBooking.mechanic?.name || 'Not Assigned'}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm text-muted-foreground">Rating</Label>
+                      <p className="font-medium">
+                        {selectedBooking.mechanic?.rating ? `★ ${selectedBooking.mechanic.rating}` : 'No rating'}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
 
-            // Selected row count
-            '& .MuiDataGrid-selectedRowCount': {
-              color: '#d1d5db',
-            },
-
-            // Action buttons
-            '& .MuiDataGrid-actionsCell': {
-              '& .MuiIconButton-root': {
-                color: '#e5e7eb',
-                '&:hover': {
-                  backgroundColor: 'rgba(249, 115, 22, 0.1)',
-                },
-              },
-            },
-
-            // Column separator
-            '& .MuiDataGrid-columnSeparator': {
-              color: '#374151',
-            },
-
-            // Virtual scroller
-            '& .MuiDataGrid-virtualScroller': {
-              backgroundColor: '#111827',
-            },
-          }}
-        />
-      </Box>
-
-      {/* Booking Details Modal */}
-      <Modal open={!!selectedBooking} onClose={() => setSelectedBooking(null)}>
-        <Box sx={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          width: { xs: '90%', md: '600px' },
-          bgcolor: '#1f2937',
-          border: '1px solid #374151',
-          borderRadius: '12px',
-          boxShadow: 24,
-          p: 4
-        }}>
-          {selectedBooking && (
-            <>
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-bold text-white">Booking Details</h3>
-                <IconButton onClick={() => setSelectedBooking(null)} sx={{ color: 'grey.400' }}>
-                  <X />
-                </IconButton>
+                {/* Additional Notes */}
+                {selectedBooking.notes && (
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-lg">Additional Notes</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm">{selectedBooking.notes}</p>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Typography variant="body2" color="grey.400">Booking ID</Typography>
-                    <Typography variant="body1" color="white">{selectedBooking.id}</Typography>
-                  </div>
-                  <div>
-                    <Typography variant="body2" color="grey.400">Status</Typography>
-                    <Chip
-                      label={selectedBooking.status}
-                      color={
-                        selectedBooking.status === 'completed' ? 'success' :
-                          selectedBooking.status === 'cancelled' ? 'error' :
-                            selectedBooking.status === 'in-progress' ? 'primary' : 'warning'
-                      }
-                      size="small"
-                      sx={{ color: 'white', fontWeight: 'bold' }}
+      {/* Add Booking Modal */}
+      <Dialog open={addBookingModal} onOpenChange={setAddBookingModal}>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
+          <DialogHeader className="flex-shrink-0">
+            <DialogTitle>Add New Booking</DialogTitle>
+          </DialogHeader>
+
+          <div className="overflow-y-auto flex-1 pr-2 -mr-2">
+            <div className="space-y-6 pb-4">
+              {/* Customer Information */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <User className="h-5 w-5" />
+                    Customer Information
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-1.5">
+                  <div className="space-y-2">
+                    <Label htmlFor="customerName" className="text-sm">Customer Name *</Label>
+                    <Input
+                      id="customerName"
+                      value={newBooking.customer.name}
+                      onChange={(e) => setNewBooking(prev => ({
+                        ...prev,
+                        customer: { ...prev.customer, name: e.target.value }
+                      }))}
+                      placeholder="Enter customer name"
                     />
                   </div>
-                </div>
-
-                <div>
-                  <Typography variant="body2" color="grey.400">Customer</Typography>
-                  <Typography variant="body1" color="white">{selectedBooking.customer?.name}</Typography>
-                  <Typography variant="body2" color="grey.400">{selectedBooking.customer?.phone}</Typography>
-                </div>
-
-                <div>
-                  <Typography variant="body2" color="grey.400">Vehicle</Typography>
-                  <Typography variant="body1" color="white">
-                    {selectedBooking.vehicle?.model} ({selectedBooking.vehicle?.year})
-                  </Typography>
-                  <Typography variant="body2" color="grey.400">
-                    Registration: {selectedBooking.vehicle?.registration}
-                  </Typography>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Typography variant="body2" color="grey.400">Service Type</Typography>
-                    <Typography variant="body1" color="white">{selectedBooking.serviceType}</Typography>
+                  <div className="space-y-2">
+                    <Label htmlFor="customerPhone" className="text-sm">Customer Phone *</Label>
+                    <Input
+                      id="customerPhone"
+                      value={newBooking.customer.phone}
+                      onChange={(e) => setNewBooking(prev => ({
+                        ...prev,
+                        customer: { ...prev.customer, phone: e.target.value }
+                      }))}
+                      placeholder="Enter phone number"
+                    />
                   </div>
-                  <div>
-                    <Typography variant="body2" color="grey.400">Mechanic</Typography>
-                    <Typography variant="body1" color="white">{selectedBooking.mechanic?.name || 'Unassigned'}</Typography>
+                  <div className="space-y-2">
+                    <Label htmlFor="customerEmail" className="text-sm">Customer Email</Label>
+                    <Input
+                      id="customerEmail"
+                      type="email"
+                      value={newBooking.customer.email}
+                      onChange={(e) => setNewBooking(prev => ({
+                        ...prev,
+                        customer: { ...prev.customer, email: e.target.value }
+                      }))}
+                      placeholder="Enter email address"
+                    />
                   </div>
-                </div>
+                </CardContent>
+              </Card>
 
-                <div>
-                  <Typography variant="body2" color="grey.400">Spare Parts</Typography>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {selectedBooking.spareParts?.map((part, index) => (
-                      <Chip
-                        key={index}
-                        label={part}
-                        size="small"
-                        sx={{
-                          bgcolor: '#374151',
-                          color: 'grey.200',
-                          border: '1px solid #4b5563'
-                        }}
-                      />
-                    )) || <Typography variant="body2" color="grey.400">No spare parts requested</Typography>}
+              {/* Vehicle Information */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Car className="h-5 w-5" />
+                    Vehicle Information
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="vehicleMake" className="text-sm">Vehicle Make *</Label>
+                    <Input
+                      id="vehicleMake"
+                      value={newBooking.vehicle.make}
+                      onChange={(e) => setNewBooking(prev => ({
+                        ...prev,
+                        vehicle: { ...prev.vehicle, make: e.target.value }
+                      }))}
+                      placeholder="e.g., Toyota"
+                    />
                   </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Typography variant="body2" color="grey.400">Date & Time</Typography>
-                    <Typography variant="body1" color="white">{selectedBooking.dateTime}</Typography>
+                  <div className="space-y-2">
+                    <Label htmlFor="vehicleModel" className="text-sm">Vehicle Model *</Label>
+                    <Input
+                      id="vehicleModel"
+                      value={newBooking.vehicle.model}
+                      onChange={(e) => setNewBooking(prev => ({
+                        ...prev,
+                        vehicle: { ...prev.vehicle, model: e.target.value }
+                      }))}
+                      placeholder="e.g., Camry"
+                    />
                   </div>
-                  <div>
-                    <Typography variant="body2" color="grey.400">Amount</Typography>
-                    <Typography variant="h6" color="orange.500">₹{selectedBooking.amount}</Typography>
+                  <div className="space-y-2">
+                    <Label htmlFor="vehicleYear" className="text-sm">Vehicle Year</Label>
+                    <Input
+                      id="vehicleYear"
+                      type="number"
+                      value={newBooking.vehicle.year}
+                      onChange={(e) => setNewBooking(prev => ({
+                        ...prev,
+                        vehicle: { ...prev.vehicle, year: e.target.value }
+                      }))}
+                      placeholder="e.g., 2020"
+                    />
                   </div>
-                </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="plateNumber" className="text-sm">Plate Number *</Label>
+                    <Input
+                      id="plateNumber"
+                      value={newBooking.vehicle.plateNumber}
+                      onChange={(e) => setNewBooking(prev => ({
+                        ...prev,
+                        vehicle: { ...prev.vehicle, plateNumber: e.target.value }
+                      }))}
+                      placeholder="e.g., ABC123"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
 
-                <div className="flex gap-2 pt-4">
-                  <Button
-                    variant="outlined"
-                    onClick={() => setReassignModal({ open: true, bookingId: selectedBooking.id })}
-                    fullWidth
-                    sx={{
-                      color: 'grey.300',
-                      borderColor: '#374151',
-                      '&:hover': {
-                        borderColor: '#4b5563',
-                        backgroundColor: 'rgba(55, 65, 81, 0.1)'
-                      }
-                    }}
-                  >
-                    Reassign Mechanic
-                  </Button>
-                  {selectedBooking.status !== 'cancelled' && selectedBooking.status !== 'completed' && (
-                    <Button
-                      variant="contained"
-                      color="error"
-                      onClick={() => handleBookingAction(selectedBooking.id, 'cancel')}
-                      fullWidth
-                      sx={{
-                        bgcolor: '#ef4444',
-                        '&:hover': { bgcolor: '#dc2626' }
-                      }}
-                    >
-                      Cancel Booking
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </>
-          )}
-        </Box>
-      </Modal>
+              {/* Service Information */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Wrench className="h-5 w-5" />
+                    Service Information
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-1.5">
+                  <div className="space-y-2">
+                    <Label htmlFor="serviceType" className="text-sm">Service Type *</Label>
+                    <Input
+                      id="serviceType"
+                      value={newBooking.serviceType}
+                      onChange={(e) => setNewBooking(prev => ({
+                        ...prev,
+                        serviceType: e.target.value
+                      }))}
+                      placeholder="e.g., Oil Change"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="dateTime" className="text-sm">Date & Time *</Label>
+                    <Input
+                      id="dateTime"
+                      type="datetime-local"
+                      value={newBooking.dateTime}
+                      onChange={(e) => setNewBooking(prev => ({
+                        ...prev,
+                        dateTime: e.target.value
+                      }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="amount" className="text-sm">Amount (₹) *</Label>
+                    <Input
+                      id="amount"
+                      type="number"
+                      value={newBooking.amount}
+                      onChange={(e) => setNewBooking(prev => ({
+                        ...prev,
+                        amount: e.target.value
+                      }))}
+                      placeholder="Enter amount"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
 
-      {/* Reassign Mechanic Modal */}
-      <Modal open={reassignModal.open} onClose={() => setReassignModal({ open: false, bookingId: null })}>
-        <Box sx={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          width: { xs: '90%', md: '400px' },
-          bgcolor: '#1f2937',
-          border: '1px solid #374151',
-          borderRadius: '12px',
-          boxShadow: 24,
-          p: 4
-        }}>
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-xl font-bold text-white">Reassign Mechanic</h3>
-            <IconButton onClick={() => setReassignModal({ open: false, bookingId: null })} sx={{ color: 'grey.400' }}>
-              <X />
-            </IconButton>
+              {/* Additional Information */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg">Additional Information</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <Label htmlFor="notes" className="text-sm">Notes</Label>
+                    <textarea
+                      id="notes"
+                      value={newBooking.notes}
+                      onChange={(e) => setNewBooking(prev => ({
+                        ...prev,
+                        notes: e.target.value
+                      }))}
+                      rows={3}
+                      className="w-full px-3 py-2 border border-input rounded-md bg-background text-sm"
+                      placeholder="Any additional notes..."
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </div>
 
-          <FormControl fullWidth sx={{ mb: 3 }}>
-            <InputLabel sx={{ color: 'grey.400' }}>Select Mechanic</InputLabel>
-            <Select
-              label="Select Mechanic"
-              sx={{
-                color: 'white',
-                backgroundColor: '#1f2937',
-                '& .MuiOutlinedInput-notchedOutline': {
-                  borderColor: '#374151'
-                },
-                '&:hover .MuiOutlinedInput-notchedOutline': {
-                  borderColor: '#4b5563'
-                },
-                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                  borderColor: '#f97316'
-                },
-                '& .MuiSvgIcon-root': {
-                  color: '#9ca3af'
-                }
-              }}
-            >
-              {mechanics.filter(m => m.isActive).map(mechanic => (
-                <MenuItem
-                  key={mechanic.id}
-                  value={mechanic.id}
-                  onClick={() => reassignMechanic(reassignModal.bookingId, mechanic.id)}
-                  sx={{ color: 'white' }}
-                >
-                  {mechanic.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+          <DialogFooter className="flex-shrink-0 border-t pt-4 mt-4">
+            <Button variant="outline" onClick={() => setAddBookingModal(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddBooking}>
+              Create Booking
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-          <Button
-            variant="outlined"
-            onClick={() => setReassignModal({ open: false, bookingId: null })}
-            fullWidth
-            sx={{
-              color: 'grey.300',
-              borderColor: '#374151',
-              '&:hover': {
-                borderColor: '#4b5563',
-                backgroundColor: 'rgba(55, 65, 81, 0.1)'
+      {/* Reassign Mechanic Modal */}
+      <Dialog
+        open={reassignModal.open}
+        onOpenChange={() => setReassignModal({ open: false, bookingId: null })}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reassign Mechanic</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <Label>Select Mechanic</Label>
+            <Select
+              onValueChange={(value) =>
+                reassignMechanic(reassignModal.bookingId, value)
               }
-            }}
-          >
-            Cancel
-          </Button>
-        </Box>
-      </Modal>
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select a mechanic" />
+              </SelectTrigger>
+              <SelectContent>
+                {mechanicsLoading ? (
+                  <SelectItem value="loading" disabled>
+                    Loading mechanics...
+                  </SelectItem>
+                ) : mechanics.filter((m) => m.isActive).length > 0 ? (
+                  mechanics
+                    .filter((m) => m.isActive)
+                    .map((mechanic) => (
+                      <SelectItem key={mechanic._id} value={mechanic._id}>
+                        {mechanic.name} {mechanic.rating && `(★ ${mechanic.rating})`}
+                      </SelectItem>
+                    ))
+                ) : (
+                  <SelectItem value="none" disabled>
+                    No mechanics available
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          3</div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setReassignModal({ open: false, bookingId: null })}
+            >
+              Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Modal */}
+      <Dialog open={deleteConfirmModal.open} onOpenChange={() => setDeleteConfirmModal({ open: false, bookingId: null })}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirm Delete</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this booking? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteConfirmModal({ open: false, bookingId: null })}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={() => handleDeleteBooking(deleteConfirmModal.bookingId)}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 };

@@ -59,41 +59,69 @@ const Faq = () => {
 
     const faqData = [
         {
-            question: "How quickly can I get my car serviced?",
-            answer: "Most services can be scheduled within 24 hours. Emergency repairs are often available same-day. You can book instantly through our platform and choose your preferred time slot."
+            question: "What is MechanicPro?",
+            answer: "MechanicPro is a professional vehicle service and maintenance platform that connects customers with trusted mechanics and provides complete solutions for car care — from engine oil changes to full diagnostics & repairs."
         },
         {
-            question: "Are your mechanics certified and verified?",
-            answer: "Yes, every mechanic on our platform is thoroughly verified, certified, and background-checked. We maintain strict quality standards to ensure your car is in expert hands."
+            question: "Where is MechanicPro located?",
+            answer: "MechanicPro operates across multiple locations with on-site service options. Customers can book appointments online or visit our nearest partner workshop."
         },
         {
-            question: "Do you provide transparent pricing upfront?",
-            answer: "Absolutely! You'll see complete pricing breakdowns before booking. No hidden charges or surprises. We provide detailed quotes for all services with clear cost explanations."
+            question: "What types of vehicles do you service?",
+            answer: "Currently MechanicPro provides comprehensive service for all types of four-wheelers (cars) i.e petrol, diesel, and CNG models."
         },
         {
-            question: "Can I track my car's service progress in real-time?",
-            answer: "Yes, our real-time tracking system lets you monitor every step of your car's service. From drop-off to completion, you'll receive instant updates and notifications."
+            question: "What services are offered by MechanicPro?",
+            answer: "Our services include: Engine oil and filter replacement, Brake pad and fluid replacement, Battery inspection and replacement, Gear oil and transmission service, Air conditioning maintenance, All types of electrical repairs, Accessories, Wiper and lighting system service, General vehicle inspection and diagnostics, All major repairs (full bore, half bore), Denting & painting, Full interior deep cleaning, Car wash & detailing."
         },
         {
-            question: "What if I'm not satisfied with the service?",
-            answer: "Your satisfaction is guaranteed. If you're not happy with the service, we'll make it right. Contact our support team within 7 days, and we'll resolve any issues promptly."
+            question: "Do you provide doorstep service?",
+            answer: "Yes, MechanicPro offers doorstep vehicle check-ups and minor repairs at your preferred location, also Doorstep Pickup & Drop."
         },
         {
-            question: "Do you offer pickup and drop-off services?",
-            answer: "Yes, we offer convenient pickup and drop-off services for most locations. This service can be selected during booking for an additional fee, saving you time and effort."
+            question: "Do you use genuine spare parts?",
+            answer: "Absolutely! We will recommend high-quality and manufacturer-approved parts to ensure safety and long-lasting performance, also keeping customer's budget preference."
         },
         {
-            question: "What types of payment do you accept?",
-            answer: "We accept all major credit/debit cards, UPI payments, net banking, and digital wallets. You can also choose cash payment at the service center if preferred."
+            question: "How can customers book a service?",
+            answer: "Currently, services can be booked via our website, or by contacting our customer care team directly / through WhatsApp (9281487865)."
         },
         {
-            question: "Are genuine parts used for repairs and replacements?",
-            answer: "We use only genuine OEM or high-quality aftermarket parts as per your preference and budget. All parts come with warranties, and we provide complete transparency about part choices."
+            question: "Are MechanicPro's prices affordable?",
+            answer: "Yes, our pricing is transparent and competitive. We provide cost estimates upfront & no hidden charges."
+        },
+        {
+            question: "Do you offer service warranties?",
+            answer: "Yes. All our services and parts come with a warranty to ensure complete customer satisfaction."
+        },
+        {
+            question: "Is there any membership or loyalty program?",
+            answer: "Yes, frequent customers can join our loyalty program to enjoy discounts, priority service, and exclusive offers."
+        },
+        {
+            question: "What makes MechanicPro different from local garages?",
+            answer: "MechanicPro focuses on professional-grade servicing, customer service satisfaction, digital job tracking, genuine parts, and certified technicians — ensuring reliability and transparency at every step, mainly MechanicPro's service assurance."
+        },
+        {
+            question: "Are your mechanics trained and certified?",
+            answer: "Yes. All our technicians are well-trained and regularly updated on the latest vehicle technologies and tools."
+        },
+        {
+            question: "Can you handle modern vehicles and diagnostics?",
+            answer: "Definitely. We use advanced diagnostic tools and OBD systems to identify and fix issues accurately."
+        },
+        {
+            question: "What if I face issues after service?",
+            answer: "Just contact our support team within the warranty period — we'll resolve it immediately."
+        },
+        {
+            question: "How can customers give feedback?",
+            answer: "We always request customer's feedback after every service - You can share your experience through our website, social media pages, or directly with our customer care team."
         }
     ];
 
     return (
-        <section ref={sectionRef} className="py-16 bg-black text-white relative overflow-hidden">
+        <section ref={sectionRef} id="faq" className="py-16 bg-black text-white relative overflow-hidden">
             {/* Background Elements */}
             <div className="absolute inset-0 opacity-5">
                 <div className="absolute top-20 left-10 w-72 h-72 bg-coral-500 rounded-full blur-3xl"></div>
@@ -179,7 +207,7 @@ const Faq = () => {
                                 muted
                                 loop
                                 playsInline
-                                className="w-full h-[700px] object-cover rounded-2xl"
+                                className="w-full h-[700px] md:h-fit object-cover rounded-2xl"
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent rounded-2xl"></div>
 
@@ -222,7 +250,9 @@ const Faq = () => {
                     <p className="text-gray-400 text-lg mb-6">
                         Our customer support team is here to help you with any additional questions.
                     </p>
-                    <button className="cursor-pointer group relative px-8 py-4 bg-gradient-to-r from-coral-500 to-coral-600 hover:from-coral-600 hover:to-coral-700 text-white font-semibold rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-coral-500/25 overflow-hidden">
+                    <button
+                        onClick={() => window.open('https://wa.me/919281487865', '_blank')}
+                        className="cursor-pointer group relative px-8 py-4 bg-gradient-to-r from-coral-500 to-coral-600 hover:from-coral-600 hover:to-coral-700 text-white font-semibold rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-coral-500/25 overflow-hidden">
                         <span className="relative z-10 flex items-center justify-center space-x-2">
                             <span>Contact Support</span>
                         </span>

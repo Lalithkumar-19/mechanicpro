@@ -1,379 +1,417 @@
-import React from 'react';
-import {
-    Box,
-    Button,
-    Card,
-    CardContent,
-    Typography,
-    Grid
-} from '@mui/material';
-import {
-    TrendingUp,
-    Download
-} from '@mui/icons-material';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { toast } from 'sonner';
 import {
-    BarChart, Bar, LineChart, Line, PieChart as RePieChart, Pie, Cell,
-    XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import {
+  TrendingUp,
+  Download,
+  Users,
+  Wrench,
+  Calendar,
+  Car,
+  IndianRupee,
+  Loader2
+} from 'lucide-react';
+import {
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer
 } from 'recharts';
+import axiosInstance from '../../utils/adminaxios';
 
-const AnalyticsDashboard = ({ bookings, mechanics, services }) => {
-    // Calculate analytics data
-    const totalRevenue = bookings.reduce((sum, booking) => sum + booking.amount, 0);
-    const todayRevenue = bookings
-        .filter(booking => booking.dateTime.includes('2024-01-15'))
-        .reduce((sum, booking) => sum + booking.amount, 0);
+const AnalyticsDashboard = () => {
+  const [analyticsData, setAnalyticsData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
 
-    const monthlyRevenue = [
-        { month: 'Jan', revenue: 125000 },
-        { month: 'Feb', revenue: 145000 },
-        { month: 'Mar', revenue: 110000 },
-        { month: 'Apr', revenue: 165000 },
-        { month: 'May', revenue: 155000 },
-        { month: 'Jun', revenue: 185000 }
-    ];
+  // Colors for charts
+  const COLORS = ['#f97316', '#3b82f6', '#10b981', '#ef4444', '#8b5cf6', '#f59e0b'];
 
-    const serviceDistribution = [
-        { name: 'General Service', value: 45 },
-        { name: 'AC Repair', value: 25 },
-        { name: 'Engine Repair', value: 15 },
-        { name: 'Brake Service', value: 10 },
-        { name: 'Others', value: 5 }
-    ];
+  // Fetch analytics data
+  const fetchAnalyticsData = async () => {
+    try {
+      setLoading(true);
+      const { data } = await axiosInstance.get("/admin/dashboard-analytics");
+      if (data.success) {
+        setAnalyticsData(data.data);
+      } else {
+        toast.error('Failed to fetch analytics data');
+      }
+    } catch (error) {
+      console.error('Error fetching analytics:', error);
+      toast.error('Error fetching analytics data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const COLORS = ['#f97316', '#3b82f6', '#10b981', '#ef4444', '#8b5cf6'];
+  useEffect(() => {
+    fetchAnalyticsData();
+  }, []);
 
-    // Custom tooltip style
-    const CustomTooltip = ({ active, payload, label }) => {
-        if (active && payload && payload.length) {
-            return (
-                <Box sx={{
-                    backgroundColor: '#1f2937',
-                    border: '1px solid #374151',
-                    borderRadius: '8px',
-                    padding: '12px',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)'
-                }}>
-                    <Typography color="white" fontWeight="bold" fontSize="14px">
-                        {label}
-                    </Typography>
-                    <Typography color="#f97316" fontSize="13px">
-                        Revenue: ₹{payload[0].value.toLocaleString()}
-                    </Typography>
-                </Box>
-            );
-        }
-        return null;
-    };
+  // Handle export
+  const handleExport = async (format) => {
+    try {
+      setExporting(true);
+      const { data } = await axiosInstance.get(`/admin/export-analytics?format=${format}`);
+      if (data.success) {
+        toast.success(data.message);
+        // In a real app, you would trigger download here
+        console.log('Export data:', data);
+      } else {
+        toast.error('Export failed');
+      }
+    } catch (error) {
+      console.error('Export error:', error);
+      toast.error('Error exporting data');
+    } finally {
+      setExporting(false);
+    }
+  };
 
-    const PieTooltip = ({ active, payload }) => {
-        if (active && payload && payload.length) {
-            return (
-                <Box sx={{
-                    backgroundColor: '#1f2937',
-                    border: '1px solid #374151',
-                    borderRadius: '8px',
-                    padding: '12px',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)'
-                }}>
-                    <Typography color="white" fontWeight="bold" fontSize="14px">
-                        {payload[0].name}
-                    </Typography>
-                    <Typography color="#f97316" fontSize="13px">
-                        {payload[0].value}%
-                    </Typography>
-                </Box>
-            );
-        }
-        return null;
-    };
+  // Custom tooltip components
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-gray-900 border border-gray-700 rounded-lg p-3 shadow-lg">
+          <p className="text-white font-semibold text-sm">{label}</p>
+          <p className="text-orange-500 text-sm">
+            Revenue: <IndianRupee className="inline h-3 w-3" />
+            {payload[0].value.toLocaleString()}
+          </p>
+          {payload[1] && (
+            <p className="text-blue-500 text-sm">
+              Bookings: {payload[1].value}
+            </p>
+          )}
+        </div>
+      );
+    }
+    return null;
+  };
 
-    // Export functionality
-    const handleExportExcel = () => {
-        alert('Exporting to Excel... This would download an Excel file in a real application.');
-    };
+  const PieTooltip = ({ active, payload }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-gray-900 border border-gray-700 rounded-lg p-3 shadow-lg">
+          <p className="text-white font-semibold text-sm">{payload[0].name}</p>
+          <p className="text-orange-500 text-sm">
+            {payload[0].value}% ({payload[0].payload.count} bookings)
+          </p>
+        </div>
+      );
+    }
+    return null;
+  };
 
-    const handleExportPDF = () => {
-        alert('Exporting to PDF... This would download a PDF file in a real application.');
-    };
-
+  if (loading) {
     return (
-        <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="space-y-8 p-6"
-        >
-            <div>
-                <h2 className="text-2xl font-bold text-white mb-2">Advanced Analytics</h2>
-                <p className="text-gray-400">Detailed insights and performance metrics</p>
-            </div>
-
-            {/* Revenue Overview */}
-            <Grid container spacing={3}>
-                <Grid item xs={12} md={4}>
-                    <Card sx={{
-                        bgcolor: '#1f2937',
-                        borderRadius: '12px',
-                        border: '1px solid #374151',
-                        '&:hover': {
-                            boxShadow: '0 8px 25px rgba(0, 0, 0, 0.3)'
-                        }
-                    }}>
-                        <CardContent>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <div>
-                                    <Typography color="#9ca3af" variant="body2">Today's Revenue</Typography>
-                                    <Typography variant="h4" color="white" sx={{ mt: 1 }}>
-                                        ₹{todayRevenue.toLocaleString()}
-                                    </Typography>
-                                    <Typography color="#34d399" variant="body2" sx={{ mt: 1 }}>
-                                        +12% from yesterday
-                                    </Typography>
-                                </div>
-                                <Box
-                                    sx={{
-                                        width: 48,
-                                        height: 48,
-                                        borderRadius: 2,
-                                        bgcolor: '#065f46',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        color: '#34d399'
-                                    }}
-                                >
-                                    <TrendingUp />
-                                </Box>
-                            </Box>
-                        </CardContent>
-                    </Card>
-                </Grid>
-
-                <Grid item xs={12} md={4}>
-                    <Card sx={{
-                        bgcolor: '#1f2937',
-                        borderRadius: '12px',
-                        border: '1px solid #374151',
-                        '&:hover': {
-                            boxShadow: '0 8px 25px rgba(0, 0, 0, 0.3)'
-                        }
-                    }}>
-                        <CardContent>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <div>
-                                    <Typography color="#9ca3af" variant="body2">This Month</Typography>
-                                    <Typography variant="h4" color="white" sx={{ mt: 1 }}>
-                                        ₹{monthlyRevenue[5].revenue.toLocaleString()}
-                                    </Typography>
-                                    <Typography color="#34d399" variant="body2" sx={{ mt: 1 }}>
-                                        +8% from last month
-                                    </Typography>
-                                </div>
-                                <Box
-                                    sx={{
-                                        width: 48,
-                                        height: 48,
-                                        borderRadius: 2,
-                                        bgcolor: '#1e3a8a',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        color: '#60a5fa'
-                                    }}
-                                >
-                                    <TrendingUp />
-                                </Box>
-                            </Box>
-                        </CardContent>
-                    </Card>
-                </Grid>
-
-                <Grid item xs={12} md={4}>
-                    <Card sx={{
-                        bgcolor: '#1f2937',
-                        borderRadius: '12px',
-                        border: '1px solid #374151',
-                        '&:hover': {
-                            boxShadow: '0 8px 25px rgba(0, 0, 0, 0.3)'
-                        }
-                    }}>
-                        <CardContent>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <div>
-                                    <Typography color="#9ca3af" variant="body2">Total Revenue</Typography>
-                                    <Typography variant="h4" color="white" sx={{ mt: 1 }}>
-                                        ₹{totalRevenue.toLocaleString()}
-                                    </Typography>
-                                    <Typography color="#34d399" variant="body2" sx={{ mt: 1 }}>
-                                        +15% from last year
-                                    </Typography>
-                                </div>
-                                <Box
-                                    sx={{
-                                        width: 48,
-                                        height: 48,
-                                        borderRadius: 2,
-                                        bgcolor: '#581c87',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        color: '#a78bfa'
-                                    }}
-                                >
-                                    <TrendingUp />
-                                </Box>
-                            </Box>
-                        </CardContent>
-                    </Card>
-                </Grid>
-            </Grid>
-
-            {/* Charts Section */}
-            <Grid container spacing={3}>
-                <Grid item xs={12} lg={8}>
-                    <Card sx={{
-                        bgcolor: '#1f2937',
-                        borderRadius: '12px',
-                        p: 3,
-                        border: '1px solid #374151'
-                    }}>
-                        <Typography variant="h6" color="white" gutterBottom fontWeight="bold">
-                            Monthly Revenue Trend
-                        </Typography>
-                        <Box sx={{ height: 400 }}>
-                            <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={monthlyRevenue}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                                    <XAxis
-                                        dataKey="month"
-                                        stroke="#9ca3af"
-                                        fontSize={12}
-                                    />
-                                    <YAxis
-                                        stroke="#9ca3af"
-                                        fontSize={12}
-                                        tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}k`}
-                                    />
-                                    <Tooltip content={<CustomTooltip />} />
-                                    <Line
-                                        type="monotone"
-                                        dataKey="revenue"
-                                        stroke="#f97316"
-                                        strokeWidth={3}
-                                        dot={{ fill: '#f97316', strokeWidth: 2, r: 4 }}
-                                        activeDot={{ r: 6, fill: '#f97316' }}
-                                    />
-                                </LineChart>
-                            </ResponsiveContainer>
-                        </Box>
-                    </Card>
-                </Grid>
-
-                <Grid item xs={12} lg={4}>
-                    <Card sx={{
-                        bgcolor: '#1f2937',
-                        borderRadius: '12px',
-                        p: 3,
-                        border: '1px solid #374151'
-                    }}>
-                        <Typography variant="h6" color="white" gutterBottom fontWeight="bold">
-                            Service Distribution
-                        </Typography>
-                        <Box sx={{ height: 400 }}>
-                            <ResponsiveContainer width="100%" height="100%">
-                                <RePieChart>
-                                    <Pie
-                                        data={serviceDistribution}
-                                        cx="50%"
-                                        cy="50%"
-                                        labelLine={false}
-                                        label={({ name, percent }) =>
-                                            `${(percent * 100).toFixed(0)}%`
-                                        }
-                                        outerRadius={100}
-                                        innerRadius={40}
-                                        paddingAngle={2}
-                                        dataKey="value"
-                                    >
-                                        {serviceDistribution.map((entry, index) => (
-                                            <Cell
-                                                key={`cell-${index}`}
-                                                fill={COLORS[index % COLORS.length]}
-                                                stroke="#1f2937"
-                                                strokeWidth={2}
-                                            />
-                                        ))}
-                                    </Pie>
-                                    <Tooltip content={<PieTooltip />} />
-                                    <Legend
-                                        wrapperStyle={{
-                                            color: 'white',
-                                            fontSize: '12px',
-                                            paddingTop: '20px'
-                                        }}
-                                        formatter={(value) => (
-                                            <span style={{ color: '#e5e7eb', fontSize: '12px' }}>
-                                                {value}
-                                            </span>
-                                        )}
-                                    />
-                                </RePieChart>
-                            </ResponsiveContainer>
-                        </Box>
-                    </Card>
-                </Grid>
-            </Grid>
-
-            {/* Export Section */}
-            <Card sx={{
-                bgcolor: '#1f2937',
-                borderRadius: '12px',
-                p: 3,
-                border: '1px solid #374151'
-            }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                        <Typography variant="h6" color="white" gutterBottom fontWeight="bold">
-                            Export Reports
-                        </Typography>
-                        <Typography color="#9ca3af" variant="body2">
-                            Download detailed analytics reports in various formats
-                        </Typography>
-                    </div>
-                    <Box sx={{ display: 'flex', gap: 2 }}>
-                        <Button
-                            variant="contained"
-                            startIcon={<Download />}
-                            onClick={handleExportExcel}
-                            sx={{
-                                bgcolor: '#059669',
-                                '&:hover': {
-                                    bgcolor: '#047857',
-                                    boxShadow: '0 4px 12px rgba(5, 150, 105, 0.3)'
-                                }
-                            }}
-                        >
-                            Export Excel
-                        </Button>
-                        <Button
-                            variant="contained"
-                            startIcon={<Download />}
-                            onClick={handleExportPDF}
-                            sx={{
-                                bgcolor: '#dc2626',
-                                '&:hover': {
-                                    bgcolor: '#b91c1c',
-                                    boxShadow: '0 4px 12px rgba(220, 38, 38, 0.3)'
-                                }
-                            }}
-                        >
-                            Export PDF
-                        </Button>
-                    </Box>
-                </Box>
-            </Card>
-        </motion.div>
+      <div className="flex justify-center items-center h-96">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2 text-lg">Loading analytics...</span>
+      </div>
     );
+  }
+
+  if (!analyticsData) {
+    return (
+      <div className="flex justify-center items-center h-96">
+        <div className="text-center">
+          <p className="text-muted-foreground text-lg">No analytics data available</p>
+          <Button onClick={fetchAnalyticsData} className="mt-4">
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const { overview, charts, recentActivities } = analyticsData;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-6 p-6"
+    >
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">Overview Dashboard</h2>
+          <p className="text-white mt-2">Real-time insights and performance metrics</p>
+        </div>
+        {/* <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => handleExport('excel')}
+            disabled={exporting}
+            className="gap-2"
+          >
+            {exporting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+            Export Excel
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => handleExport('pdf')}
+            disabled={exporting}
+            className="gap-2"
+          >
+            {exporting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+            Export PDF
+          </Button>
+        </div> */}
+      </div>
+
+      {/* Overview Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Today's Revenue</CardTitle>
+            <IndianRupee className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">
+              <IndianRupee className="inline h-5 w-5" />
+              {overview.todayRevenue.toLocaleString()}
+            </div>
+            {/* <p className="text-xs text-muted-foreground">
+              +12% from yesterday
+            </p> */}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Monthly Revenue</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">
+              <IndianRupee className="inline h-5 w-5" />
+              {overview.monthRevenue.toLocaleString()}
+            </div>
+            {/* <p className="text-xs text-muted-foreground">
+              +8% from last month
+            </p> */}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Bookings</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-600">
+              {overview.totalBookings}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              All time bookings
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Mechanics</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-600">
+              {overview.totalMechanics}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Available for service
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Monthly Revenue Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Monthly Revenue Trend</CardTitle>
+            <CardDescription>Revenue and booking trends over the last 6 months</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={charts.monthlyRevenue}>
+                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                  <XAxis
+                    dataKey="month"
+                    className="text-xs"
+                  />
+                  <YAxis
+                    className="text-xs"
+                    tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}k`}
+                  />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend />
+                  <Line
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="#f97316"
+                    strokeWidth={2}
+                    name="Revenue"
+                    dot={{ fill: '#f97316' }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="bookings"
+                    stroke="#3b82f6"
+                    strokeWidth={2}
+                    name="Bookings"
+                    dot={{ fill: '#3b82f6' }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Service Distribution Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Service Distribution</CardTitle>
+            <CardDescription>Popular services by booking percentage</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={charts.serviceDistribution}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percentage }) =>
+                      `${percentage.toFixed(1)}%`
+                    }
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="percentage"
+                  >
+                    {charts.serviceDistribution.map((entry, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={COLORS[index % COLORS.length]}
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip content={<PieTooltip />} />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Additional Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Customers</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{overview.totalCustomers}</div>
+            <p className="text-xs text-muted-foreground">Registered users</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Services</CardTitle>
+            <Wrench className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{overview.totalServices}</div>
+            <p className="text-xs text-muted-foreground">Available services</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+            <IndianRupee className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">
+              <IndianRupee className="inline h-5 w-5" />
+              {overview.totalRevenue.toLocaleString()}
+            </div>
+            <p className="text-xs text-muted-foreground">All time revenue</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Recent Activities */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Activities</CardTitle>
+          <CardDescription>Latest bookings and updates</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {recentActivities.map((activity, index) => (
+              <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                <div className="flex items-center space-x-4">
+                  <div className="bg-primary/10 p-2 rounded-full">
+                    <Car className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-medium">{activity.customer.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {activity.vehicle.make} {activity.vehicle.model} • {activity.serviceType}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="font-semibold">
+                    <IndianRupee className="inline h-3 w-3" />
+                    {activity.amount}
+                  </p>
+                  <Badge variant="secondary" className="mt-1">
+                    {activity.status}
+                  </Badge>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
 };
 
 export default AnalyticsDashboard;

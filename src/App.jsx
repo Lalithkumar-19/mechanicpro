@@ -10,6 +10,7 @@ import Profile from './pages/Profile';
 import BookingPage from './pages/BookingPage';
 import MechanicDashboard from './pages/MechanicDashboard';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
+import MechanicLogin from './pages/MechanicLogin';
 const App = () => {
   return (
     <Router>
@@ -21,8 +22,9 @@ const App = () => {
           <Route path="/login" element={<Login />} />
           <Route path='/find-mechanics' element={<FindMechanic />} />
           <Route path="/profile" element={<Profile />} />
-          <Route path="/booking" element={<BookingPage />} />
+          <Route path="/booking/:id" element={<BookingPage />} />
           <Route path="/mechanic-dashboard" element={<MechanicDashboard />} />
+          <Route path="/mechanic-login" element={<MechanicLogin />} />
           <Route path='admin' element={<SuperAdminDashboard />} />
         </Routes>
         <Footer />

@@ -1,12 +1,44 @@
 import { Linkedin, Instagram, ArrowUp } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
 
 const Footer = () => {
+    const navigate = useNavigate();
+    const location = useLocation();
+
     const scrollToTop = () => {
         window.scrollTo({ top: 0, behavior: "smooth" });
     };
 
+    // Navigation items matching the Header
+    const navItems = [
+        { name: "Home", path: "/", isSection: false },
+        { name: "Find Mechanics", path: "/find-mechanics", isSection: false },
+        { name: "Discover Services", path: "services", isSection: true },
+        { name: "Contact Us", path: "contact-us", isSection: true },
+        { name: "FAQ", path: "faq", isSection: true },
+    ];
+
+    // Handle navigation with section support (same as Header)
+    const handleNavigation = (item) => {
+        if (item.isSection) {
+            // If we're already on home page, scroll to section
+            if (location.pathname === "/") {
+                const element = document.getElementById(item.path);
+                if (element) {
+                    element.scrollIntoView({ behavior: "smooth" });
+                }
+            } else {
+                // Navigate to home page with hash
+                navigate(`/#${item.path}`);
+            }
+        } else {
+            // Regular page navigation
+            navigate(item.path);
+        }
+    };
+
     return (
-        <footer className="relative  bg-gradient-to-br from-gray-900 to-black border-t text-white border-orange-100 overflow-hidden">
+        <footer className="relative bg-gradient-to-br from-gray-900 to-black border-t text-white border-orange-100 overflow-hidden">
             {/* Animated background pattern */}
             <div className="absolute inset-0 opacity-5">
                 <div className="absolute top-0 left-0 w-full h-full">
@@ -24,19 +56,19 @@ const Footer = () => {
                         <div className="group">
                             <div className="flex items-center space-x-3 mb-4">
                                 <div className="relative">
-                                    <a href="/" className="group flex items-center ">
-
+                                    <div
+                                        onClick={() => navigate("/")}
+                                        className="group flex items-center cursor-pointer"
+                                    >
                                         <img src="/logo.png" alt="Logo" className="w-20 h-16 object-contain" />
-
-                                        <h3 className="text-2xl font-bold text-white-800 group-hover:text-orange-600 transition-colors duration-300">
+                                        <h3 className="text-2xl font-bold text-white group-hover:text-orange-600 transition-colors duration-300">
                                             MechanicPro
                                         </h3>
-                                    </a>
+                                    </div>
                                 </div>
-
                             </div>
                             <p className="text-white leading-relaxed max-w-md">
-                                Experience car servicing made simple, transparent, and lightning-fast. Search trusted mechanics near you, book instantly, and track your car’s service in real time — all from one place.
+                                Experience car servicing made simple, transparent, and lightning-fast. Search trusted mechanics near you, book instantly, and track your car's service in real time — all from one place.
                             </p>
                         </div>
 
@@ -59,27 +91,22 @@ const Footer = () => {
                         </div>
                     </div>
 
-                    {/* Services */}
+                    {/* Quick Links */}
                     <div className="space-y-6">
                         <h4 className="text-lg font-semibold text-orange-500 relative">
                             Quick Links
                             <div className="absolute bottom-0 left-0 w-0 h-0.5 bg-orange-400 group-hover:w-full transition-all duration-500"></div>
                         </h4>
                         <ul className="space-y-3">
-                            {[
-                                "Find Mechanics",
-                                "Explore Services",
-                                "FAQ",
-
-                            ].map((service, index) => (
+                            {navItems.map((item, index) => (
                                 <li key={index}>
-                                    <span
-
-                                        className="group flex items-center text-white hover:text-orange-400 transition-all duration-300 hover:translate-x-2"
+                                    <button
+                                        onClick={() => handleNavigation(item)}
+                                        className="group flex items-center text-white hover:text-orange-400 transition-all duration-300 hover:translate-x-2 w-full text-left"
                                     >
                                         <div className="w-2 h-2 bg-orange-200 rounded-full mr-3 group-hover:bg-orange-400 group-hover:scale-125 transition-all duration-300"></div>
-                                        {service}
-                                    </span>
+                                        {item.name}
+                                    </button>
                                 </li>
                             ))}
                         </ul>
@@ -88,25 +115,27 @@ const Footer = () => {
                     {/* Company */}
                     <div className="space-y-6">
                         <h4 className="text-lg font-semibold text-orange-500 relative">
-                            Company
+                            Serives
                             <div className="absolute bottom-0 left-0 w-0 h-0.5 bg-orange-400 group-hover:w-full transition-all duration-500"></div>
                         </h4>
                         <ul className="space-y-3">
-                            {[{ item: "About Us", link: "/about" }, { item: "Contact", link: "/contact" }].map((item, index) => (
+                            {[
+                                { item: "About Us", link: "about-us" },
+                                { item: "Contact", link: "contact-us" }
+                            ].map((item, index) => (
                                 <li key={index}>
-                                    <a
-                                        href={item.link}
-                                        className="group flex items-center text-white hover:text-orange-600 transition-all duration-300 hover:translate-x-2"
+                                    <button
+                                        onClick={() => navigate(`#${item.link}`)}
+                                        className="group flex items-center text-white hover:text-orange-600 transition-all duration-300 hover:translate-x-2 w-full text-left"
                                     >
-                                        {/* <div className="w-2 h-2 bg-orange-200 rounded-full mr-3 group-hover:bg-orange-400 group-hover:scale-125 transition-all duration-300"></div> */}
-                                        - &nbsp;{item.item}
-                                    </a>
+                                        <div className="w-2 h-2 bg-orange-200 rounded-full mr-3 group-hover:bg-orange-400 group-hover:scale-125 transition-all duration-300"></div>
+                                        {item.item}
+                                    </button>
                                 </li>
                             ))}
                         </ul>
                     </div>
                 </div>
-
 
                 {/* Bottom section */}
                 <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
@@ -115,20 +144,20 @@ const Footer = () => {
                             © 2025 MechanicPro. All rights reserved.
                         </p>
                         <div className="flex space-x-6">
-                            <a
-                                href="#"
+                            <button
+                                onClick={() => navigate("/privacy-policy")}
                                 className="text-sm text-gray-400 hover:text-orange-600 transition-colors duration-300 relative group"
                             >
                                 Privacy Policy
                                 <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-orange-400 group-hover:w-full transition-all duration-300"></span>
-                            </a>
-                            <a
-                                href="#"
+                            </button>
+                            <button
+                                onClick={() => navigate("/terms-of-service")}
                                 className="text-sm text-gray-400 hover:text-orange-600 transition-colors duration-300 relative group"
                             >
                                 Terms of Service
                                 <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-orange-400 group-hover:w-full transition-all duration-300"></span>
-                            </a>
+                            </button>
                         </div>
                     </div>
 

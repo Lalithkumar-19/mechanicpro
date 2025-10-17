@@ -1,143 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
   Car, Calendar, Clock, CheckCircle, ArrowRight,
   ArrowLeft, Search, Filter, DollarSign, MessageCircle,
   Settings, Palette, Sparkles, Cog, FileCheck, Shield,
   RotateCcw, FileText, Wrench,
   Save,
-  X
+  X,
+  AlertCircle
 } from 'lucide-react';
+import axiosInstance from '../utils/axiosInstance';
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
-// Service data with categories and prices (same as before)
-const serviceCategories = [
-  {
-    id: 'ac-services',
-    name: 'AC Services',
-    icon: <Settings className="w-6 h-6" />,
-    services: [
-      { id: 'ac-cleaning', name: 'AC Cleaning & Recharging', description: 'Air conditioning system cleaning and refrigerant recharge', price: 2499, duration: '2-3 hours' },
-      { id: 'ac-parts', name: 'AC Parts Replacement', description: 'Air conditioning component replacement and repair', price: 3999, duration: '3-4 hours' }
-    ]
-  },
-  {
-    id: 'denting-painting',
-    name: 'Denting & Painting',
-    icon: <Palette className="w-6 h-6" />,
-    services: [
-      { id: 'boot-painting', name: 'Boot Painting', description: 'Trunk/boot painting and refinishing', price: 5999, duration: '1-2 days' },
-      { id: 'front-bumper', name: 'Front Bumper Denting & Painting', description: 'Front bumper dent repair and painting', price: 4499, duration: '1 day' },
-      { id: 'full-body', name: 'Full Body Painting', description: 'Complete vehicle body painting', price: 24999, duration: '3-4 days' },
-      { id: 'damage-painting', name: 'Damage Paintings', description: 'Body damage repair and painting', price: 7999, duration: '2-3 days' },
-      { id: 'bonnet-painting', name: 'Bonnet Painting', description: 'Hood painting and refinishing', price: 3999, duration: '1 day' },
-      { id: 'alloys-painting', name: 'Alloys Painting', description: 'Alloy wheel painting and refinishing', price: 6999, duration: '1-2 days' },
-      { id: 'rear-bumper', name: 'Rear Bumper Denting & Painting', description: 'Rear bumper dent repair and painting', price: 4499, duration: '1 day' }
-    ]
-  },
-  {
-    id: 'detailing',
-    name: 'Detailing & Accessories',
-    icon: <Sparkles className="w-6 h-6" />,
-    services: [
-      { id: 'full-body-wash', name: 'Full Body Wash + Deep Interior Cleaning', description: 'Complete exterior wash and interior detailing', price: 2999, duration: '3-4 hours' },
-      { id: 'ppf', name: 'PPF Installation / Replacement', description: 'Paint protection film installation and replacement', price: 19999, duration: '1-2 days' },
-      { id: 'ceramic', name: 'Ceramic Coatings', description: 'Ceramic coating application for paint protection', price: 14999, duration: '1 day' },
-      { id: 'rubbing', name: 'Rubbing / Polishing', description: 'Paint rubbing and polishing services', price: 4999, duration: '4-5 hours' }
-    ]
-  },
-  {
-    id: 'electrical',
-    name: 'Electrical Repairs',
-    icon: <Wrench className="w-6 h-6" />,
-    services: [
-      { id: 'battery', name: 'Battery Charging / Replacement', description: 'Battery testing, charging, and replacement services', price: 1999, duration: '1-2 hours' },
-      { id: 'dynamo', name: 'Dynamo Repairs', description: 'Alternator and dynamo repair services', price: 3499, duration: '3-4 hours' },
-      { id: 'wiper', name: 'Wiper Motors Repairs', description: 'Windshield wiper motor repair and replacement', price: 2499, duration: '2-3 hours' },
-      { id: 'headlights', name: 'Headlights Repair / Replacement', description: 'Headlight assembly repair and replacement', price: 5999, duration: '3-4 hours' },
-      { id: 'electrical-fault', name: 'Electrical & Electronic Fault Detection', description: 'Comprehensive electrical system diagnostics', price: 1499, duration: '1-2 hours' }
-    ]
-  },
-  {
-    id: 'engine',
-    name: 'Engine Repairs',
-    icon: <Cog className="w-6 h-6" />,
-    services: [
-      { id: 'carbon-cleaning', name: 'Carbon Cleaning (Manual)', description: 'Manual carbon deposit cleaning from engine components', price: 7999, duration: '4-5 hours' },
-      { id: 'turbo', name: 'Turbo Repairs', description: 'Turbocharger repair and replacement services', price: 12999, duration: '5-6 hours' },
-      { id: 'engine-bore', name: 'Engine Full Bore', description: 'Complete engine overhaul and bore reconstruction', price: 29999, duration: '2-3 days' },
-      { id: 'head-work', name: 'Head Work', description: 'Cylinder head repairs and reconditioning', price: 15999, duration: '1-2 days' },
-      { id: 'clutch', name: 'Clutch Service', description: 'Clutch replacement and adjustment services', price: 8999, duration: '4-5 hours' },
-      { id: 'diesel-works', name: 'Diesel Works (Injectors / Fuel Pumps)', description: 'Diesel injection system repair and fuel pump services', price: 11999, duration: '5-6 hours' },
-      { id: 'def-cleaning', name: 'DEF Urea Tank Cleaning', description: 'Diesel exhaust fluid system cleaning and maintenance', price: 4999, duration: '2-3 hours' },
-      { id: 'engine-scanning', name: 'Engine Scanning (Check Light)', description: 'Diagnostic scanning for engine warning lights', price: 1999, duration: '1 hour' }
-    ]
-  },
-  {
-    id: 'general',
-    name: 'General Service',
-    icon: <Wrench className="w-6 h-6" />,
-    services: [
-      { id: 'luxury', name: 'Luxury Package', description: 'Premium maintenance with detailed care and luxury vehicle specialization', price: 9999, duration: '5-6 hours' },
-      { id: 'premium', name: 'Premium Package', description: 'Comprehensive maintenance package with additional inspections and services', price: 6999, duration: '3-4 hours' },
-      { id: 'standard', name: 'Standard Package', description: 'Basic maintenance package including oil change, filter replacement, and basic checks', price: 3999, duration: '2-3 hours' }
-    ]
-  },
-  {
-    id: 'inspection',
-    name: 'Inspection',
-    icon: <FileCheck className="w-6 h-6" />,
-    services: [
-      { id: 'engine-inspection', name: 'Engine Inspection', description: 'Detailed engine condition inspection', price: 1499, duration: '1-2 hours' },
-      { id: 'full-inspection', name: 'Full Vehicle Inspection', description: 'Complete vehicle inspection with recommendations', price: 2999, duration: '2-3 hours' },
-      { id: 'pre-owned', name: 'Pre-owned Car Inspection', description: 'Used car inspection and evaluation', price: 1999, duration: '1-2 hours' },
-      { id: 'road-trip', name: 'Road Trip Inspection', description: 'Pre-travel vehicle inspection and preparation', price: 2499, duration: '1-2 hours' },
-      { id: 'electrical-inspection', name: 'Electrical Inspection', description: 'Comprehensive electrical system inspection', price: 1799, duration: '1-2 hours' }
-    ]
-  },
-  {
-    id: 'insurance',
-    name: 'Insurance Services',
-    icon: <Shield className="w-6 h-6" />,
-    services: [
-      { id: 'insurance', name: 'Insurance Services', description: 'Vehicle insurance processing and assistance', price: 999, duration: '1-2 hours' }
-    ]
-  },
-  {
-    id: 'pollution',
-    name: 'Pollution Certificate',
-    icon: <RotateCcw className="w-6 h-6" />,
-    services: [
-      { id: 'pollution-cert', name: 'Pollution Certificate Issuance', description: 'Pollution under control certificate issuance', price: 499, duration: '30 mins' }
-    ]
-  },
-  {
-    id: 'rto',
-    name: 'RTO Works',
-    icon: <FileText className="w-6 h-6" />,
-    services: [
-      { id: 'rto-works', name: 'RTO Works', description: 'Regional Transport Office documentation and services', price: 1999, duration: '2-3 hours' }
-    ]
-  },
-  {
-    id: 'tyres',
-    name: 'Tyres & Wheel Services',
-    icon: <Settings className="w-6 h-6" />,
-    services: [
-      { id: 'brake-pads', name: 'Disc / Brake Pads Replacement', description: 'Brake disc and pad replacement and cleaning', price: 4499, duration: '2-3 hours' },
-      { id: 'tyres-replacement', name: 'Tyres Replacement', description: 'Tire replacement and installation', price: 7999, duration: '1-2 hours' },
-      { id: 'wheel-alignment', name: 'Wheel Alignment', description: 'Wheel alignment and geometry correction', price: 1999, duration: '1 hour' },
-      { id: 'wheel-balancing', name: 'Wheel Balancing', description: 'Wheel balancing for smooth driving', price: 1499, duration: '1 hour' }
-    ]
-  }
-];
-
-// Sample user cars
-const userCars = [
-  { id: 1, name: 'My Daily Driver', model: 'Honda City', year: '2022', licensePlate: 'MH01AB1234' },
-  { id: 2, name: 'Weekend Car', model: 'Hyundai Creta', year: '2021', licensePlate: 'MH01CD5678' }
-];
+// Icon mapping for service categories
+const iconMap = {
+  'settings': <Settings className="w-6 h-6" />,
+  'palette': <Palette className="w-6 h-6" />,
+  'sparkles': <Sparkles className="w-6 h-6" />,
+  'wrench': <Wrench className="w-6 h-6" />,
+  'cog': <Cog className="w-6 h-6" />,
+  'file-check': <FileCheck className="w-6 h-6" />,
+  'shield': <Shield className="w-6 h-6" />,
+  'rotate-ccw': <RotateCcw className="w-6 h-6" />,
+  'file-text': <FileText className="w-6 h-6" />
+};
 
 const BookingPage = () => {
+  const { id: mechanicId } = useParams();
+  const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedCar, setSelectedCar] = useState(null);
   const [selectedServices, setSelectedServices] = useState([]);
@@ -152,26 +44,76 @@ const BookingPage = () => {
     year: '',
     licensePlate: ''
   });
-  const [showAddCarForm, setShowAddCarForm] = useState(true);
+  const [showAddCarForm, setShowAddCarForm] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [serviceCategories, setServiceCategories] = useState([]);
+  const [userCars, setUserCars] = useState([]);
+  const [mechanic, setMechanic] = useState(null);
+  const [error, setError] = useState('');
 
-  const handleAddCar = () => {
+  // Time slots from 9 AM to 5 PM
+  const timeSlots = [
+    '09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM',
+    '11:00 AM', '11:30 AM', '12:00 PM', '12:30 PM',
+    '01:00 PM', '01:30 PM', '02:00 PM', '02:30 PM',
+    '03:00 PM', '03:30 PM', '04:00 PM', '04:30 PM', '05:00 PM'
+  ];
+
+  // Fetch mechanic services and user data
+
+  useEffect(() => {
+    const fetchBookingData = async () => {
+      try {
+        setLoading(true);
+        const response = await axiosInstance.get(`/user/mechanic/${mechanicId}`);
+
+        setMechanic(response.data.mechanic);
+        setServiceCategories(response.data.serviceCategories);
+        setUserCars(response.data.userCars);
+
+        // Auto-select first car if available
+        if (response.data.userCars.length > 0) {
+          setSelectedCar(response.data.userCars[0]);
+        }
+
+      } catch (error) {
+        console.error('Error fetching booking data:', error);
+        setError('Failed to load booking data. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (mechanicId) {
+      fetchBookingData();
+    }
+  }, [mechanicId]);
+
+  const handleAddCar = async () => {
     if (newCar.name && newCar.model && newCar.year) {
-      const car = {
-        id: Date.now(),
-        name: newCar.name,
-        model: newCar.model,
-        year: newCar.year,
-        licensePlate: newCar.licensePlate || ''
-      };
-      setCars([...cars, car]);
-      setSelectedCar(car);
-      setNewCar({
-        name: '',
-        model: '',
-        year: '',
-        licensePlate: ''
-      });
-      setShowAddCarForm(false);
+      try {
+        const response = await axiosInstance.post('/user/cars', {
+          name: newCar.name,
+          model: newCar.model,
+          year: newCar.year,
+          licensePlate: newCar.licensePlate
+        });
+
+        const car = response.data;
+        setUserCars(prev => [...prev, car]);
+        setSelectedCar(car);
+        setNewCar({
+          name: '',
+          model: '',
+          year: '',
+          licensePlate: ''
+        });
+        setShowAddCarForm(false);
+      } catch (error) {
+        console.error('Error adding car:', error);
+        setError('Failed to add car. Please try again.');
+      }
     }
   };
 
@@ -184,14 +126,6 @@ const BookingPage = () => {
     });
     setShowAddCarForm(false);
   };
-
-  // Time slots from 9 AM to 5 PM
-  const timeSlots = [
-    '09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM',
-    '11:00 AM', '11:30 AM', '12:00 PM', '12:30 PM',
-    '01:00 PM', '01:30 PM', '02:00 PM', '02:30 PM',
-    '03:00 PM', '03:30 PM', '04:00 PM', '04:30 PM', '05:00 PM'
-  ];
 
   const totalPrice = selectedServices.reduce((sum, service) => sum + service.price, 0);
 
@@ -216,26 +150,126 @@ const BookingPage = () => {
     }
   };
 
-  const handleBookService = () => {
-    // Handle booking logic here
-    console.log({
-      car: selectedCar,
-      services: selectedServices,
-      instructions,
-      date: selectedDate,
-      time: selectedTime,
-      totalPrice
-    });
-    alert('Service booked successfully!');
+  const handleBookService = async () => {
+    try {
+      setSubmitting(true);
+
+      // Debug: Check what values you're getting
+      console.log('selectedDate:', selectedDate);
+      console.log('selectedTime:', selectedTime);
+
+      // Create a robust date parser
+      const createValidDate = (dateStr, timeStr) => {
+        try {
+          // Clean the time string
+          const cleanTime = timeStr.trim().toUpperCase();
+
+          // Extract time and period
+          const timeMatch = cleanTime.match(/(\d{1,2}):?(\d{2})?\s*(AM|PM)?/i);
+
+          if (!timeMatch) {
+            throw new Error('Invalid time format');
+          }
+
+          let [, hours, minutes = '00', period = 'AM'] = timeMatch;
+          let hourInt = parseInt(hours, 10);
+
+          // Handle 12-hour format conversion
+          if (period === 'PM' && hourInt < 12) {
+            hourInt += 12;
+          } else if (period === 'AM' && hourInt === 12) {
+            hourInt = 0;
+          }
+
+          // Format the time components
+          const formattedTime = `${hourInt.toString().padStart(2, '0')}:${minutes.padStart(2, '0')}:00`;
+          const dateTimeString = `${dateStr}T${formattedTime}`;
+
+          const finalDate = new Date(dateTimeString);
+
+          if (isNaN(finalDate.getTime())) {
+            throw new Error('Invalid date created');
+          }
+
+          return finalDate.toISOString();
+        } catch (error) {
+          console.error('Date parsing error:', error);
+          // Fallback: Use current date + 1 hour
+          const fallbackDate = new Date();
+          fallbackDate.setHours(fallbackDate.getHours() + 1);
+          return fallbackDate.toISOString();
+        }
+      };
+
+      const bookingData = {
+        mechanicId,
+        carId: selectedCar.id,
+        services: selectedServices,
+        instructions,
+        dateTime: createValidDate(selectedDate, selectedTime),
+        totalPrice
+      };
+
+      console.log('Final booking data:', bookingData);
+
+      const response = await axiosInstance.post('/user/booking-create', bookingData);
+      if (response.status == 201) {
+        toast.success('Service booked successfully!');
+        setTimeout(() => {
+          navigate('/profile');
+        }, 3000);
+      }
+
+    } catch (error) {
+      console.error('Error creating booking:', error);
+      setError('Failed to create booking. Please try again.');
+      toast.error('Failed to create booking. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const filteredServices = serviceCategories
     .filter(category => filterCategory === 'all' || category.id === filterCategory)
-    .flatMap(category => category.services)
-    .filter(service =>
-      service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      service.description.toLowerCase().includes(searchTerm.toLowerCase())
+    .map(category => ({
+      ...category,
+      services: category.services.filter(service =>
+        service.name.toLowerCase().includes(searchTerm.toLowerCase().trim()) ||
+        service.description.toLowerCase().includes(searchTerm.toLowerCase().trim())
+      )
+    }))
+    .filter(category => category.services.length > 0);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black text-white pt-20 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading booking details...</p>
+        </div>
+      </div>
     );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-black text-white pt-20 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-red-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="w-8 h-8 text-red-400" />
+          </div>
+          <h3 className="text-2xl font-bold text-white mb-2">Error</h3>
+          <p className="text-gray-400 mb-6">{error}</p>
+          <button
+            onClick={() => window.history.back()}
+            className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-xl transition-colors duration-300"
+          >
+            Go Back
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-black text-white pt-20">
@@ -247,6 +281,25 @@ const BookingPage = () => {
             <p className="text-gray-300 text-lg max-w-2xl mx-auto leading-relaxed">
               Professional car care with transparent pricing and convenient scheduling
             </p>
+            {mechanic && (
+              <div className="mt-6 flex items-center justify-center space-x-4">
+                <div className="w-12 h-12 bg-orange-500/20 rounded-xl flex items-center justify-center">
+                  <Wrench className="w-6 h-6 text-orange-400" />
+                </div>
+                <div className="text-left">
+                  <h3 className="text-white font-semibold">{mechanic.name}</h3>
+                  <p className="text-gray-400 text-sm">{mechanic.address}</p>
+                  <div className="flex items-center space-x-2 mt-1">
+                    <div className="flex items-center space-x-1">
+                      <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                      <span className="text-green-400 text-xs">Verified</span>
+                    </div>
+                    <span className="text-gray-500">•</span>
+                    <span className="text-gray-400 text-xs">{mechanic.totalBookings} bookings</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -295,6 +348,7 @@ const BookingPage = () => {
                       <h2 className="text-2xl font-bold text-white mb-2">Select Your Car</h2>
                       <p className="text-gray-400">Choose from your saved cars or add a new one</p>
                     </div>
+
                     {showAddCarForm && (
                       <motion.div
                         initial={{ opacity: 0, height: 0 }}
@@ -373,6 +427,7 @@ const BookingPage = () => {
                         </div>
                       </motion.div>
                     )}
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {userCars.map((car) => (
                         <div
@@ -401,7 +456,8 @@ const BookingPage = () => {
                       {/* Add New Car Option */}
                       <div
                         onClick={() => setShowAddCarForm(true)}
-                        className="p-6 rounded-2xl border-2 border-dashed border-gray-600 hover:border-orange-500/40 cursor-pointer transition-all duration-300">
+                        className="p-6 rounded-2xl border-2 border-dashed border-gray-600 hover:border-orange-500/40 cursor-pointer transition-all duration-300"
+                      >
                         <div className="text-center">
                           <div className="w-12 h-12 bg-gray-700 rounded-xl flex items-center justify-center mx-auto mb-3">
                             <Car className="w-6 h-6 text-gray-400" />
@@ -441,7 +497,7 @@ const BookingPage = () => {
                       <select
                         value={filterCategory}
                         onChange={(e) => setFilterCategory(e.target.value)}
-                        className="px-4 py-3 bg-gray-800/30 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        className="px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
                       >
                         <option value="all">All Categories</option>
                         {serviceCategories.map(category => (
@@ -452,11 +508,11 @@ const BookingPage = () => {
 
                     {/* Services Grid */}
                     <div className="space-y-4">
-                      {serviceCategories.map((category) => (
+                      {filteredServices.map((category) => (
                         <div key={category.id} className="space-y-4">
                           <div className="flex items-center space-x-3">
                             <div className="w-10 h-10 bg-orange-500/20 rounded-xl flex items-center justify-center">
-                              {category.icon}
+                              {iconMap[category.icon] || <Wrench className="w-6 h-6" />}
                             </div>
                             <h3 className="text-xl font-semibold text-white">{category.name}</h3>
                           </div>
@@ -486,6 +542,9 @@ const BookingPage = () => {
                                         {service.duration}
                                       </span>
                                     </div>
+                                    <p className="text-amber-400 text-xs mt-2">
+                                      * This is an estimated price only, not accurate. Final price may vary.
+                                    </p>
                                   </div>
                                   <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${selectedServices.find(s => s.id === service.id)
                                     ? 'bg-orange-500 border-orange-500'
@@ -584,19 +643,21 @@ const BookingPage = () => {
                     </div>
 
                     {/* Service Center Info */}
-                    <div className="bg-gray-800/30 rounded-xl p-6 border border-gray-700">
-                      <h3 className="text-lg font-semibold text-white mb-4">Service Center</h3>
-                      <div className="flex items-center space-x-4">
-                        <div className="w-12 h-12 bg-orange-500/20 rounded-xl flex items-center justify-center">
-                          <Wrench className="w-6 h-6 text-orange-400" />
-                        </div>
-                        <div>
-                          <h4 className="text-white font-semibold">AutoCare Pro Center</h4>
-                          <p className="text-gray-400 text-sm">Shop No. 12, Linking Road, Bandra West, Mumbai</p>
-                          <p className="text-gray-500 text-sm">Selected from Find Mechanic page</p>
+                    {mechanic && (
+                      <div className="bg-gray-800/30 rounded-xl p-6 border border-gray-700">
+                        <h3 className="text-lg font-semibold text-white mb-4">Service Center</h3>
+                        <div className="flex items-center space-x-4">
+                          <div className="w-12 h-12 bg-orange-500/20 rounded-xl flex items-center justify-center">
+                            <Wrench className="w-6 h-6 text-orange-400" />
+                          </div>
+                          <div>
+                            <h4 className="text-white font-semibold">{mechanic.name}</h4>
+                            <p className="text-gray-400 text-sm">{mechanic.address}</p>
+                            <p className="text-gray-500 text-sm">Contact: {mechanic.phone}</p>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    )}
                   </motion.div>
                 )}
 
@@ -639,6 +700,7 @@ const BookingPage = () => {
                               <div>
                                 <h4 className="text-white font-medium">{service.name}</h4>
                                 <p className="text-gray-400 text-sm">{service.duration}</p>
+                                <p className="text-amber-400 text-xs">* Estimated price</p>
                               </div>
                               <span className="text-orange-400 font-semibold">
                                 ₹{service.price.toLocaleString()}
@@ -660,11 +722,11 @@ const BookingPage = () => {
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-400">Service Center:</span>
-                            <span className="text-white font-medium">AutoCare Pro Center</span>
+                            <span className="text-white font-medium">{mechanic?.name}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-400">Address:</span>
-                            <span className="text-white text-sm text-right">Shop No. 12, Linking Road, Bandra West, Mumbai</span>
+                            <span className="text-white text-sm text-right">{mechanic?.address}</span>
                           </div>
                           {instructions && (
                             <div>
@@ -685,8 +747,8 @@ const BookingPage = () => {
                             ₹{totalPrice.toLocaleString()}
                           </span>
                         </div>
-                        <p className="text-gray-400 text-sm mt-2">
-                          Includes all service charges and taxes
+                        <p className="text-amber-400 text-sm mt-2">
+                          * This is an estimated total. Final amount may vary based on actual service requirements.
                         </p>
                       </div>
                     </div>
@@ -720,10 +782,15 @@ const BookingPage = () => {
                   ) : (
                     <button
                       onClick={handleBookService}
-                      className="flex items-center space-x-2 bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl transition-all duration-300"
+                      disabled={submitting}
+                      className="flex items-center space-x-2 bg-green-500 hover:bg-green-600 disabled:bg-gray-600 text-white px-6 py-3 rounded-xl transition-all duration-300 disabled:cursor-not-allowed"
                     >
-                      <CheckCircle className="w-4 h-4" />
-                      <span>Confirm Booking</span>
+                      {submitting ? (
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      ) : (
+                        <CheckCircle className="w-4 h-4" />
+                      )}
+                      <span>{submitting ? 'Booking...' : 'Confirm Booking'}</span>
                     </button>
                   )}
                 </div>
@@ -782,13 +849,15 @@ const BookingPage = () => {
                   )}
 
                   {/* Service Center */}
-                  <div className="p-3 bg-gray-800/30 rounded-lg">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <Wrench className="w-4 h-4 text-orange-400" />
-                      <span className="text-white text-sm font-medium">Service Center</span>
+                  {mechanic && (
+                    <div className="p-3 bg-gray-800/30 rounded-lg">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <Wrench className="w-4 h-4 text-orange-400" />
+                        <span className="text-white text-sm font-medium">Service Center</span>
+                      </div>
+                      <p className="text-gray-400 text-xs">{mechanic.name}</p>
                     </div>
-                    <p className="text-gray-400 text-xs">AutoCare Pro Center</p>
-                  </div>
+                  )}
 
                   {/* Total */}
                   {selectedServices.length > 0 && (
@@ -799,6 +868,9 @@ const BookingPage = () => {
                           ₹{totalPrice.toLocaleString()}
                         </span>
                       </div>
+                      <p className="text-amber-400 text-xs mt-1">
+                        * Estimated amount
+                      </p>
                     </div>
                   )}
                 </div>
