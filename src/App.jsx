@@ -26,6 +26,13 @@ const App = () => {
           <Route path="/mechanic-dashboard" element={<MechanicDashboard />} />
           <Route path="/mechanic-login" element={<MechanicLogin />} />
           <Route path='admin' element={<SuperAdminDashboard />} />
+          <Route path="/*" Component={
+            <>
+              <div className='mt-[200px]'>
+                <h1 className='text-4xl font-bold text-white'>404 Not Found</h1>
+              </div>
+            </>
+          } />
         </Routes>
         <Footer />
       </div>

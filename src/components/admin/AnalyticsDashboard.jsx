@@ -49,7 +49,7 @@ const AnalyticsDashboard = () => {
   const fetchAnalyticsData = async () => {
     try {
       setLoading(true);
-      const { data } = await axiosInstance.get("/admin/dashboard-analytics");
+      const { data } = await axiosInstance.get("/admin/analytics/dashboard-analytics");
       if (data.success) {
         setAnalyticsData(data.data);
       } else {
@@ -71,7 +71,7 @@ const AnalyticsDashboard = () => {
   const handleExport = async (format) => {
     try {
       setExporting(true);
-      const { data } = await axiosInstance.get(`/admin/export-analytics?format=${format}`);
+      const { data } = await axiosInstance.get(`/admin/analytics/export-analytics?format=${format}`);
       if (data.success) {
         toast.success(data.message);
         // In a real app, you would trigger download here

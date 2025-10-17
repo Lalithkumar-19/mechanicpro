@@ -84,7 +84,7 @@ const BookingsManagement = ({ addNotification }) => {
   const fetchBookings = async () => {
     try {
       setLoading(true);
-      const res = await axiosInstance.get("/admin/get-all-bookings");
+      const res = await axiosInstance.get("/admin/booking/get-all-bookings");
       console.log('Bookings API Response:', res.data);
 
       if (res.status === 200) {
@@ -117,7 +117,7 @@ const BookingsManagement = ({ addNotification }) => {
   const fetchMechanics = async () => {
     try {
       setMechanicsLoading(true);
-      const res = await axiosInstance.get("/admin/get-all-mechanics");
+      const res = await axiosInstance.get("/admin/mechanic/get-all-mechanics");
       if (res.status === 200 && res.data && Array.isArray(res.data.data)) {
         setMechanics(res.data.data);
       } else if (res.status === 200 && Array.isArray(res.data)) {
@@ -158,7 +158,7 @@ const BookingsManagement = ({ addNotification }) => {
   const handleBookingAction = async (bookingId, action) => {
     try {
       console.log('Handling booking action:', { bookingId, action });
-      const res = await axiosInstance.put("/admin/handle-booking-action", {
+      const res = await axiosInstance.put("/admin/booking/handle-booking-action", {
         bookingId: bookingId,
         action
       });
@@ -192,7 +192,7 @@ const BookingsManagement = ({ addNotification }) => {
   // Update Booking Status
   const updateBookingStatus = async (bookingId, newStatus) => {
     try {
-      const res = await axiosInstance.put("/admin/update-booking-status", {
+      const res = await axiosInstance.put("/admin/booking/update-booking-status", {
         bookingId: bookingId,
         status: newStatus
       });
@@ -216,7 +216,7 @@ const BookingsManagement = ({ addNotification }) => {
   // Reassign Mechanic
   const reassignMechanic = async (bookingId, newMechanicId) => {
     try {
-      const res = await axiosInstance.put("/admin/reassign-mechanic", {
+      const res = await axiosInstance.put("/admin/booking/reassign-mechanic", {
         bookingId: bookingId,
         mechanicId: newMechanicId
       });
@@ -272,7 +272,7 @@ const BookingsManagement = ({ addNotification }) => {
 
       console.log('Sending booking data:', bookingData);
 
-      const res = await axiosInstance.post("/admin/create-booking", bookingData);
+      const res = await axiosInstance.post("/admin/booking/create-booking", bookingData);
 
       if (res.data && res.data.success) {
         setBookings(prev => [res.data.data, ...prev]);
@@ -301,7 +301,7 @@ const BookingsManagement = ({ addNotification }) => {
   // Delete Booking
   const handleDeleteBooking = async (bookingId) => {
     try {
-      const res = await axiosInstance.delete(`/admin/delete-booking/${bookingId}`);
+      const res = await axiosInstance.delete(`/admin/booking/delete-booking/${bookingId}`);
 
       if (res.data && res.data.success) {
         setBookings(prev => prev.filter(booking => booking._id !== bookingId));

@@ -85,7 +85,7 @@ const CarBook = ({ cars, onAddCar, onEditCar, onDeleteCar, loading }) => {
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
-                Car Name
+                Car Maker
               </label>
               <input
                 type="text"
@@ -300,7 +300,8 @@ const BookingsManagement = ({ bookings, loading }) => {
 
   const handleCancel = async () => {
     try {
-      const res = await axiosInstance.post(`/bookings/${selectedBooking._id}/cancel`)
+      const res = await axiosInstance.post(`/bookings/${selectedBooking._id}/cancel`);
+
       toast.success("Booking deleted successfully");
       closeModal();
       getBookings();
@@ -309,6 +310,7 @@ const BookingsManagement = ({ bookings, loading }) => {
       toast.error("Something went wrong");
     }
   }
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -403,7 +405,10 @@ const BookingsManagement = ({ bookings, loading }) => {
                   </div>
                   <div>
                     <p className="text-gray-400 text-sm">Mechanic</p>
-                    <p className="text-white font-medium">{booking.mechanicName}</p>
+                    <div className="flex items-center space-x-1 mt-1">
+                      <img src={booking.profilePic} alt="mechanic" className="w-6 h-6 rounded-md" />
+                      <p className="text-white font-medium">{booking.mechanicName}</p>
+                    </div>
                     <div className="flex items-center space-x-1 mt-1">
                       <Star className="w-3 h-3 text-yellow-400 fill-current" />
                       <span className="text-gray-400 text-sm">{booking.mechanicRating}</span>
@@ -420,11 +425,11 @@ const BookingsManagement = ({ bookings, loading }) => {
                 >
                   View Details
                 </button>
-                {booking.status === 'pending' && (
+                {/* {booking.status === 'pending' && (
                   <button className="px-4 py-2 border border-gray-600 text-gray-300 hover:text-white hover:border-gray-500 rounded-xl transition-colors duration-300 text-sm font-medium">
                     Cancel
                   </button>
-                )}
+                )} */}
               </div>
             </div>
 
@@ -554,8 +559,9 @@ const BookingsManagement = ({ bookings, loading }) => {
               <div className="bg-gray-700/30 rounded-xl p-4">
                 <h4 className="text-lg font-semibold text-white mb-3">Mechanic Information</h4>
                 <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-orange-500/20 rounded-xl flex items-center justify-center">
-                    <User className="w-6 h-6 text-orange-400" />
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center">
+                    {/* <User className="w-6 h-6 text-orange-400" /> */}
+                    <img src={selectedBooking.profilePic} alt="mechanic" className="w-full h-full rounded-md" />
                   </div>
                   <div className="flex-1">
                     <p className="text-white font-medium">{selectedBooking.mechanicName}</p>

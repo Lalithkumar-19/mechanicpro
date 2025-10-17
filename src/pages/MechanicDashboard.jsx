@@ -9,7 +9,8 @@ import {
   Plus, Truck, Shield, Zap, Sparkles, Eye, ChevronLeft, ChevronRight, X,
   LogOut
 } from 'lucide-react';
-
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import mechanicaxios from '../utils/mechanicaxios';
 import { uploadToImgBB } from '../utils/uploadtoImbb';
 
@@ -145,16 +146,7 @@ const MechanicDashboard = () => {
     currentSparePartPage * itemsPerPage
   );
 
-  const addNotification = (message, type) => {
-    const notification = {
-      id: Date.now(),
-      message,
-      type,
-      timestamp: new Date(),
-      read: false
-    };
-    setNotifications(prev => [notification, ...prev]);
-  };
+  
 
   // Update booking status with API call
   const updateBookingStatus = async (bookingId, newStatus) => {
@@ -177,10 +169,10 @@ const MechanicDashboard = () => {
         'cancelled': 'Booking cancelled'
       };
 
-      addNotification(statusMessages[newStatus] || 'Status updated', 'booking');
+      toast.success(statusMessages[newStatus] || 'Status updated');
     } catch (error) {
       console.error('Error updating booking status:', error);
-      alert('Error updating booking status');
+      toast.error('Error updating booking status');
     }
   };
 
@@ -192,17 +184,17 @@ const MechanicDashboard = () => {
       });
 
       setShopStatus(response.data.isActive);
-      addNotification(`Shop ${response.data.isActive ? 'opened' : 'closed'}`, 'shop');
+      toast.success(`Shop ${response.data.isActive ? 'opened' : 'closed'}`, 'shop');
     } catch (error) {
       console.error('Error updating shop status:', error);
-      alert('Error updating shop status');
+      toast.error('Error updating shop status');
     }
   };
 
   // Create new spare part request
   const handleNewSparePartRequest = async () => {
     if (!newSparePart.partName || !newSparePart.carModel) {
-      alert('Please fill in all required fields');
+      toast.error('Please fill in all required fields');
       return;
     }
 
@@ -220,13 +212,13 @@ const MechanicDashboard = () => {
         quantity: 1,
         urgency: 'medium'
       });
-      addNotification('New spare part request submitted', 'spare-part');
+      toast.success('New spare part request submitted');
     } catch (error) {
       console.error('Error creating spare part request:', error);
-      alert('Error creating spare part request');
+      toast.error('Error creating spare part request');
     }
   };
-
+console.log("sparepart",sparePartRequests)
   // Profile edit functionality
   const handleProfileEdit = () => {
     setEditingProfile(true);
@@ -249,7 +241,7 @@ const MechanicDashboard = () => {
       console.log(response, "f")
       if (response.status === 200) {
         setEditingProfile(false);
-        addNotification('Profile updated successfully', 'profile');
+          toast.success('Profile updated successfully');
         const mechanicInfo = JSON.parse(localStorage.getItem('mechanic_info'));
         mechanicInfo.name = profileData.name;
         localStorage.setItem('mechanic_info', JSON.stringify(mechanicInfo));
@@ -259,7 +251,7 @@ const MechanicDashboard = () => {
 
     } catch (error) {
       console.error('Error updating profile:', error);
-      alert('Error updating profile');
+      toast.error('Error updating profile');
     }
   };
 
@@ -292,11 +284,11 @@ const MechanicDashboard = () => {
         zip: profileData.address.split(', ')[2]?.split(' ')[1] || ''
       });
 
-      addNotification('Profile picture updated successfully', 'profile');
+      toast.success('Profile picture updated successfully');
 
     } catch (error) {
       console.error('Error uploading profile picture:', error);
-      alert('Error uploading profile picture');
+      toast.error('Error uploading profile picture');
     } finally {
       setLoading(false);
     }
@@ -354,6 +346,7 @@ const MechanicDashboard = () => {
       default: return <Clock className="w-4 h-4" />;
     }
   };
+  
 
   if (loading) {
     return (
@@ -388,7 +381,7 @@ const MechanicDashboard = () => {
               {/* Shop Status Toggle */}
               <div className="flex items-center space-x-3">
                 <span className="text-gray-300 text-sm font-medium">
-                  {shopStatus ? 'Shop Open' : 'Shop Closed'}
+                  {shopStatus ? 'Garage Open' : 'Garage Closed'}
                 </span>
                 <button
                   onClick={toggleShopStatus}
@@ -717,7 +710,7 @@ const MechanicDashboard = () => {
                               <div className="flex space-x-2">
                                 <button
                                   onClick={() => {
-                                    setSelectedBooking(booking);
+                                    // setSelectedBooking(booking);
                                     setShowSparePartForm(true);
                                   }}
                                   className="flex items-center space-x-1 border border-gray-600 text-gray-300 hover:text-white hover:border-gray-500 px-3 py-2 rounded-lg transition-colors duration-300 text-sm font-medium"
@@ -797,13 +790,13 @@ const MechanicDashboard = () => {
                           className="pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
                         />
                       </div>
-                      <button
+                      {/* <button
                         onClick={() => setShowSparePartForm(true)}
                         className="flex items-center space-x-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-xl transition-colors duration-300"
                       >
                         <Plus className="w-4 h-4" />
                         <span>New Request</span>
-                      </button>
+                      </button> */}
                     </div>
                   </div>
 
@@ -833,14 +826,14 @@ const MechanicDashboard = () => {
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                             <div>
                               <span className="text-gray-400">Service ID:</span>
-                              <span className="text-white ml-2">{request.serviceId}</span>
+                              <span className="text-white ml-2">{request.id.slice(0, 8)}</span>
                             </div>
                             <div>
                               <span className="text-gray-400">Quantity:</span>
                               <span className="text-white ml-2">{request.quantity}</span>
                             </div>
                             <div>
-                              <span className="text-gray-400">Requested:</span>
+                              <span className="text-gray-400">Requested On:</span>
                               <span className="text-white ml-2">{new Date(request.requestedAt).toLocaleDateString()}</span>
                             </div>
                           </div>

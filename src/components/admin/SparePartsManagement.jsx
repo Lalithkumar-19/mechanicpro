@@ -61,7 +61,7 @@ const SparePartsManagement = ({ addNotification }) => {
     const fetchSpareParts = async () => {
         try {
             setLoading(true);
-            const { data } = await axiosInstance.get("/admin/get-all-spare-parts");
+            const { data } = await axiosInstance.get("/admin/spareParts/get-all-spare-parts");
             setSpareParts(data);
             toast.success('Spare parts loaded successfully');
         } catch (error) {
@@ -79,14 +79,14 @@ const SparePartsManagement = ({ addNotification }) => {
     // Update Spare Part Status
     const updateSparePartStatus = async (requestId, newStatus) => {
         try {
-            const { data } = await axiosInstance.put("/admin/update-spare-part-status", {
+            const { data } = await axiosInstance.put("/admin/spareParts/update-spare-part-status", {
                 requestId,
                 status: newStatus
             });
 
             // Update the specific spare part in the state
             setSpareParts(prev => prev.map(request =>
-                request.id === requestId ? data : request
+                request._id === requestId ? data : request
             ));
 
             const statusMessages = {
@@ -95,8 +95,6 @@ const SparePartsManagement = ({ addNotification }) => {
                 'dispatched': 'dispatched',
                 'delivered': 'delivered'
             };
-
-            addNotification(`Spare part request ${requestId} ${statusMessages[newStatus]}`, 'spare-part');
             toast.success(`Spare part request ${statusMessages[newStatus]} successfully`);
         } catch (error) {
             console.error('Error updating spare part status:', error);
@@ -153,13 +151,13 @@ const SparePartsManagement = ({ addNotification }) => {
                     {
                         label: 'Approve',
                         icon: CheckCircle,
-                        action: () => updateSparePartStatus(sparePart.id, 'approved'),
+                        action: () => updateSparePartStatus(sparePart._id, 'approved'),
                         variant: 'default'
                     },
                     {
                         label: 'Reject',
                         icon: XCircle,
-                        action: () => updateSparePartStatus(sparePart.id, 'rejected'),
+                        action: () => updateSparePartStatus(sparePart._id, 'rejected'),
                         variant: 'destructive'
                     }
                 );
@@ -168,7 +166,7 @@ const SparePartsManagement = ({ addNotification }) => {
                 actions.push({
                     label: 'Dispatch',
                     icon: Truck,
-                    action: () => updateSparePartStatus(sparePart.id, 'dispatched'),
+                    action: () => updateSparePartStatus(sparePart._id, 'dispatched'),
                     variant: 'default'
                 });
                 break;
@@ -176,7 +174,7 @@ const SparePartsManagement = ({ addNotification }) => {
                 actions.push({
                     label: 'Mark Delivered',
                     icon: Package,
-                    action: () => updateSparePartStatus(sparePart.id, 'delivered'),
+                    action: () => updateSparePartStatus(sparePart._id, 'delivered'),
                     variant: 'default'
                 });
                 break;
@@ -185,6 +183,7 @@ const SparePartsManagement = ({ addNotification }) => {
         return actions;
     };
 
+    console.log(spareParts);
     if (loading) {
         return (
             <div className="flex justify-center items-center h-96">
@@ -249,10 +248,9 @@ const SparePartsManagement = ({ addNotification }) => {
                             <TableRow>
                                 <TableHead>Request ID</TableHead>
                                 <TableHead>Mechanic</TableHead>
-                                <TableHead>Service ID</TableHead>
                                 <TableHead>Part Details</TableHead>
                                 <TableHead>Car Model</TableHead>
-                                <TableHead>Year</TableHead>
+                                {/* <TableHead>Year</TableHead> */}
                                 <TableHead>Urgency</TableHead>
                                 <TableHead>Status</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
@@ -274,9 +272,7 @@ const SparePartsManagement = ({ addNotification }) => {
                                             </div>
                                         </div>
                                     </TableCell>
-                                    <TableCell className="font-mono">
-                                        {part.serviceId || 'N/A'}
-                                    </TableCell>
+
                                     <TableCell>
                                         <div>
                                             <div className="font-medium">
@@ -290,9 +286,9 @@ const SparePartsManagement = ({ addNotification }) => {
                                     <TableCell>
                                         {part.carModel || 'N/A'}
                                     </TableCell>
-                                    <TableCell>
+                                    {/* <TableCell>
                                         {part.year || 'N/A'}
-                                    </TableCell>
+                                    </TableCell> */}
                                     <TableCell>
                                         <Badge variant={getUrgencyVariant(part.urgency)}>
                                             {part.urgency || 'Medium'}
@@ -301,7 +297,7 @@ const SparePartsManagement = ({ addNotification }) => {
                                     <TableCell>
                                         <Select
                                             value={part.status || 'pending'}
-                                            onValueChange={(value) => updateSparePartStatus(part.id, value)}
+                                            onValueChange={(value) => updateSparePartStatus(part._id, value)}
                                         >
                                             <SelectTrigger className="w-32">
                                                 <SelectValue>
@@ -404,10 +400,10 @@ const SparePartsManagement = ({ addNotification }) => {
                                             <Label className="text-sm text-muted-foreground">Request ID</Label>
                                             <p className="font-mono font-medium">{selectedSparePart.requestId || 'N/A'}</p>
                                         </div>
-                                        <div>
+                                        {/* <div>
                                             <Label className="text-sm text-muted-foreground">Service ID</Label>
                                             <p className="font-mono font-medium">{selectedSparePart.serviceId || 'N/A'}</p>
-                                        </div>
+                                        </div> */}
                                         <div>
                                             <Label className="text-sm text-muted-foreground">Status</Label>
                                             <Badge variant={getStatusVariant(selectedSparePart.status)}>
@@ -512,47 +508,7 @@ const SparePartsManagement = ({ addNotification }) => {
                                 </Card>
 
                                 {/* Quick Actions */}
-                                <Card>
-                                    <CardHeader className="pb-3">
-                                        <CardTitle className="flex items-center gap-2 text-lg">
-                                            <AlertTriangle className="h-5 w-5" />
-                                            Quick Actions
-                                        </CardTitle>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <div className="flex flex-wrap gap-2">
-                                            {getStatusActions(selectedSparePart).map((action, index) => (
-                                                <Button
-                                                    key={index}
-                                                    variant={action.variant === 'destructive' ? 'destructive' : 'default'}
-                                                    size="sm"
-                                                    onClick={action.action}
-                                                    className="gap-2"
-                                                >
-                                                    <action.icon className="h-4 w-4" />
-                                                    {action.label}
-                                                </Button>
-                                            ))}
-                                            <Select
-                                                value={selectedSparePart.status || 'pending'}
-                                                onValueChange={(value) => updateSparePartStatus(selectedSparePart.id, value)}
-                                            >
-                                                <SelectTrigger className="w-40">
-                                                    <SelectValue>
-                                                        Change Status
-                                                    </SelectValue>
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="pending">Pending</SelectItem>
-                                                    <SelectItem value="approved">Approved</SelectItem>
-                                                    <SelectItem value="dispatched">Dispatched</SelectItem>
-                                                    <SelectItem value="delivered">Delivered</SelectItem>
-                                                    <SelectItem value="rejected">Rejected</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                    </CardContent>
-                                </Card>
+                              
                             </div>
                         )}
                     </div>

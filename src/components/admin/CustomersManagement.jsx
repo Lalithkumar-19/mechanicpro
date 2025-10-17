@@ -72,7 +72,7 @@ const CustomersManagement = ({ addNotification }) => {
   const fetchCustomers = async () => {
     try {
       setLoading(true);
-      const { data } = await axiosInstance.get("/admin/get-all-customers");
+      const { data } = await axiosInstance.get("/admin/user/get-all-customers");
       setCustomers(data);
       toast.success('Customers loaded successfully');
     } catch (error) {
@@ -96,7 +96,7 @@ const CustomersManagement = ({ addNotification }) => {
         return;
       }
 
-      const { data } = await axiosInstance.post("/admin/create-customer", newCustomer);
+      const { data } = await axiosInstance.post("/admin/user/create-customer", newCustomer);
       if (data) {
         await fetchCustomers();
         setShowAddCustomer(false);
@@ -120,7 +120,7 @@ const CustomersManagement = ({ addNotification }) => {
   // Handle Update Customer Status
   const handleUpdateCustomerStatus = async (customerId, isBlocked) => {
     try {
-      const { data } = await axiosInstance.put("/admin/update-customer-status", {
+      const { data } = await axiosInstance.put("/admin/user/update-customer-status", {
         customerId,
         isBlocked
       });
@@ -141,7 +141,7 @@ const CustomersManagement = ({ addNotification }) => {
   // Handle Delete Customer
   const handleDeleteCustomer = async (customerId) => {
     try {
-      const { data } = await axiosInstance.delete(`/admin/delete-customer/${customerId}`);
+      const { data } = await axiosInstance.delete(`/admin/user/delete-customer/${customerId}`);
       if (data) {
         await fetchCustomers();
         addNotification('Customer deleted', 'customer');

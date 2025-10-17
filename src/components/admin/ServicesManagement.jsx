@@ -81,7 +81,7 @@ const ServicesManagement = ({ addNotification }) => {
     const fetchServices = async () => {
         try {
             setLoading(true);
-            const { data } = await axiosInstance.get("/admin/get-all-services");
+            const { data } = await axiosInstance.get("/admin/services/get-all-services");
             if (data.success) {
                 setServices(data.data);
                 toast.success('Services loaded successfully');
@@ -109,7 +109,7 @@ const ServicesManagement = ({ addNotification }) => {
                 return;
             }
 
-            const { data } = await axiosInstance.post("/admin/create-service", newService);
+            const { data } = await axiosInstance.post("/admin/services/create-service", newService);
             if (data.success) {
                 await fetchServices();
                 setShowAddService(false);
@@ -141,7 +141,7 @@ const ServicesManagement = ({ addNotification }) => {
                 return;
             }
 
-            const { data } = await axiosInstance.put(`/admin/update-service/${service._id}`, service);
+            const { data } = await axiosInstance.put(`/admin/services/update-service/${service._id}`, service);
             if (data.success) {
                 await fetchServices();
                 setEditingService(null);
@@ -159,7 +159,7 @@ const ServicesManagement = ({ addNotification }) => {
     // Handle Delete Service
     const handleDeleteService = async (serviceId) => {
         try {
-            const { data } = await axiosInstance.delete(`/admin/delete-service/${serviceId}`);
+            const { data } = await axiosInstance.delete(`/admin/services/delete-service/${serviceId}`);
             if (data.success) {
                 await fetchServices();
                 addNotification('Service deleted', 'service');
@@ -178,7 +178,7 @@ const ServicesManagement = ({ addNotification }) => {
     // Toggle Service Status
     const toggleServiceStatus = async (serviceId) => {
         try {
-            const { data } = await axiosInstance.patch(`/admin/toggle-service-status/${serviceId}`);
+            const { data } = await axiosInstance.patch(`/admin/services/toggle-service-status/${serviceId}`);
             if (data.success) {
                 await fetchServices();
                 const service = services.find(s => s._id === serviceId);
