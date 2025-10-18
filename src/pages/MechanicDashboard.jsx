@@ -9,10 +9,11 @@ import {
   Plus, Truck, Shield, Zap, Sparkles, Eye, ChevronLeft, ChevronRight, X,
   LogOut
 } from 'lucide-react';
-import { toast } from 'react-toastify';
+import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import mechanicaxios from '../utils/mechanicaxios';
 import { uploadToImgBB } from '../utils/uploadtoImbb';
+import { socket } from '../utils/socketServer';
 
 const MechanicDashboard = () => {
   const navigate = useNavigate();
@@ -146,7 +147,7 @@ const MechanicDashboard = () => {
     currentSparePartPage * itemsPerPage
   );
 
-  
+
 
   // Update booking status with API call
   const updateBookingStatus = async (bookingId, newStatus) => {
@@ -169,7 +170,7 @@ const MechanicDashboard = () => {
         'cancelled': 'Booking cancelled'
       };
 
-      toast.success(statusMessages[newStatus] || 'Status updated');
+      // toast.success(statusMessages[newStatus] || 'Status updated');
     } catch (error) {
       console.error('Error updating booking status:', error);
       toast.error('Error updating booking status');
@@ -218,11 +219,24 @@ const MechanicDashboard = () => {
       toast.error('Error creating spare part request');
     }
   };
-console.log("sparepart",sparePartRequests)
+  console.log("sparepart", sparePartRequests)
   // Profile edit functionality
   const handleProfileEdit = () => {
     setEditingProfile(true);
   };
+
+
+  const LoadBookings = async () => {
+    try {
+      const res = await mechanicaxios.get('/bookings?page=1&limit=100');
+      if (res.status === 200) {
+        setBookings(res.data);
+      }
+    } catch (error) {
+      console.error('Error loading bookings:', error);
+      toast.error('Error loading bookings');
+    }
+  }
 
   const handleProfileSave = async () => {
     try {
@@ -241,7 +255,7 @@ console.log("sparepart",sparePartRequests)
       console.log(response, "f")
       if (response.status === 200) {
         setEditingProfile(false);
-          toast.success('Profile updated successfully');
+        toast.success('Profile updated successfully');
         const mechanicInfo = JSON.parse(localStorage.getItem('mechanic_info'));
         mechanicInfo.name = profileData.name;
         localStorage.setItem('mechanic_info', JSON.stringify(mechanicInfo));
@@ -346,7 +360,55 @@ console.log("sparepart",sparePartRequests)
       default: return <Clock className="w-4 h-4" />;
     }
   };
-  
+  const mechanicInfo = JSON.parse(localStorage.getItem('mechanic_info') || '{}');
+
+
+
+
+
+  useEffect(() => {
+
+    if ('Notification' in window) {
+      Notification.requestPermission();
+    }
+    const playNotificationSound = () => {
+      const audio = new Audio('/sounds/notification1.mp3'); // Add your sound file
+      audio.volume = 0.6; // Set volume (0.0 to 1.0)
+      audio.play().catch(error => {
+        console.log('Audio play failed:', error);
+      });
+    };
+
+    const handleNotification = (data) => {
+
+      // Play notification sound
+      playNotificationSound();
+
+      // Show toast notification
+      toast.success(`You got a new booking from a user.  Please accept/decline `);
+      setTimeout(() => {
+        LoadBookings();
+      }, 2000);
+
+    }
+
+    socket.on("connect", () => {
+      socket.emit("register_mechanic", mechanicInfo.id);
+    });
+
+    socket.on("notification", handleNotification);
+
+    socket.on("booking_update", handleNotification);
+
+    // Cleanup
+    return () => {
+      socket.off("notification", handleNotification);
+      socket.off("booking_update", handleNotification);
+    };
+  }, [mechanicInfo.id]);
+
+
+
 
   if (loading) {
     return (
@@ -359,11 +421,12 @@ console.log("sparepart",sparePartRequests)
     );
   }
 
-  const mechanicInfo = JSON.parse(localStorage.getItem('mechanic_info') || '{}');
+
 
   return (
     <div className="min-h-screen bg-black text-white">
       {/* Header */}
+      <ToastContainer />
       <div className="bg-gradient-to-r from-gray-900 to-black border-b border-gray-800 sticky top-0 z-50">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between py-4">

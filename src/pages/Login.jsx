@@ -6,7 +6,9 @@ import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import axiosInstance from '../utils/axiosinstance';
 
-const Login = () => {
+
+const Login = ({ onLoginSuccess }) => {
+
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -21,8 +23,12 @@ const Login = () => {
   // Check if user is already logged in
   useEffect(() => {
     const userInfo = localStorage.getItem('userInfo');
+
     if (userInfo) {
-      navigate('/');
+      onLoginSuccess();
+      setTimeout(() => {
+        navigate('/');
+      }, 1000)
     }
   }, [navigate]);
 
@@ -42,6 +48,7 @@ const Login = () => {
       toast.error('Please fill in all fields');
       return;
     }
+    
 
     try {
       setIsLoading(true);

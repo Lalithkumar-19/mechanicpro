@@ -99,7 +99,7 @@ const SuperAdminDashboard = () => {
   // Authentication
   const handleLogout = () => {
     localStorage.removeItem("admin_token");
-    localStorage.removeItem("admin_user");
+    localStorage.removeItem("admin_id");
     setIsLoggedIn(false);
   };
 
@@ -162,9 +162,9 @@ const SuperAdminDashboard = () => {
       });
       console.log(response);
       if (response.status === 200) {
-        const { token, user } = response.data;
+        const { token, _id } = response.data;
         localStorage.setItem("admin_token", token);
-        localStorage.setItem("admin_user", JSON.stringify(user));
+        localStorage.setItem("admin_id", _id);
         setIsLoggedIn(true);
         setLoader(false);
       }
@@ -173,7 +173,12 @@ const SuperAdminDashboard = () => {
       setLoader(false);
     }
   };
-  if (!localStorage.getItem("admin_token")) {
+
+
+
+
+
+  if (!isLoggedIn) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="bg-gray-900 rounded-2xl p-8 border border-gray-800 max-w-md w-full">
