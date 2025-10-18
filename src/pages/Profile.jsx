@@ -9,7 +9,8 @@ import {
   CalendarIcon,
   DollarSign,
   PhoneIcon,
-  MapPinIcon
+  MapPinIcon,
+  Menu
 } from 'lucide-react';
 import axiosInstance from '../utils/axiosinstance';
 import { uploadToImgBB } from '../utils/uploadtoImbb';
@@ -57,7 +58,7 @@ const CarBook = ({ cars, onAddCar, onEditCar, onDeleteCar, loading }) => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
           <h3 className="text-2xl font-bold text-white">My Cars</h3>
           <p className="text-gray-400">Manage your vehicle details</p>
@@ -65,7 +66,7 @@ const CarBook = ({ cars, onAddCar, onEditCar, onDeleteCar, loading }) => {
         <button
           onClick={() => setIsAdding(true)}
           disabled={loading}
-          className="flex items-center space-x-2 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-600 text-white px-4 py-2 rounded-xl transition-colors duration-300"
+          className="flex items-center justify-center space-x-2 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-600 text-white px-4 py-2 rounded-xl transition-colors duration-300 w-full sm:w-auto"
         >
           <Plus className="w-4 h-4" />
           <span>Add Car</span>
@@ -82,7 +83,7 @@ const CarBook = ({ cars, onAddCar, onEditCar, onDeleteCar, loading }) => {
           <h4 className="text-lg font-semibold text-white mb-4">
             {editingCar ? 'Edit Car' : 'Add New Car'}
           </h4>
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 Car Maker
@@ -136,10 +137,10 @@ const CarBook = ({ cars, onAddCar, onEditCar, onDeleteCar, loading }) => {
                 className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
               />
             </div>
-            <div className="md:col-span-2 flex space-x-3">
+            <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
               <button
                 type="submit"
-                className="flex items-center space-x-2 bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg transition-colors duration-300"
+                className="flex items-center justify-center space-x-2 bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg transition-colors duration-300"
               >
                 <Save className="w-4 h-4" />
                 <span>{editingCar ? 'Update Car' : 'Add Car'}</span>
@@ -147,7 +148,7 @@ const CarBook = ({ cars, onAddCar, onEditCar, onDeleteCar, loading }) => {
               <button
                 type="button"
                 onClick={cancelEdit}
-                className="flex items-center space-x-2 border border-gray-600 text-gray-300 hover:text-white hover:border-gray-500 px-6 py-3 rounded-lg transition-colors duration-300"
+                className="flex items-center justify-center space-x-2 border border-gray-600 text-gray-300 hover:text-white hover:border-gray-500 px-6 py-3 rounded-lg transition-colors duration-300"
               >
                 <span>Cancel</span>
               </button>
@@ -227,12 +228,6 @@ const CarBook = ({ cars, onAddCar, onEditCar, onDeleteCar, loading }) => {
     </div>
   );
 };
-
-// Bookings Management Component
-// import { useState } from 'react';
-// import { motion } from 'framer-motion';
-// import { Search, Clock4, CheckCircle, Wrench, XCircle, Star, Calendar, Phone, MapPin, X, User, Car, WrenchIcon, MapPinIcon, PhoneIcon, CalendarIcon, DollarSign } from 'lucide-react';
-
 const BookingsManagement = ({ bookings, loading }) => {
   const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -620,8 +615,6 @@ const BookingsManagement = ({ bookings, loading }) => {
   );
 };
 
-
-
 // Main Profile Component
 const Profile = () => {
   const navigate = useNavigate();
@@ -631,6 +624,7 @@ const Profile = () => {
   const [carsLoading, setCarsLoading] = useState(false);
   const [bookingsLoading, setBookingsLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const [profileData, setProfileData] = useState({
     name: '',
@@ -770,6 +764,12 @@ const Profile = () => {
     localStorage.removeItem('userInfo');
     navigate('/login');
   };
+
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId);
+    setMobileMenuOpen(false);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-black text-white pt-20 flex items-center justify-center">
@@ -783,20 +783,42 @@ const Profile = () => {
 
   return (
     <div className="min-h-screen bg-black text-white pt-20">
+      {/* Mobile Header */}
+      <div className="lg:hidden bg-gray-900/50 border-b border-gray-800 sticky top-0 z-40">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => setMobileMenuOpen(true)}
+                className="p-2 text-gray-400 hover:text-white transition-colors duration-300"
+              >
+                <Menu className="w-6 h-6" />
+              </button>
+              <h1 className="text-xl font-bold text-white">My Dashboard</h1>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="p-2 text-gray-400 hover:text-white transition-colors duration-300"
+              title="Logout"
+            >
+              <LogOut className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="text-center mb-12">
+        {/* Desktop Header */}
+        <div className="hidden lg:block text-center mb-12">
           <h1 className="text-4xl font-bold text-white mb-4">My Dashboard</h1>
           <p className="text-gray-400 text-lg max-w-2xl mx-auto">
             Manage your profile, vehicles, and service appointments in one place
           </p>
-
         </div>
 
-
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Sidebar Navigation */}
-          <div className="lg:col-span-1">
+          {/* Sidebar Navigation - Hidden on mobile */}
+          <div className="hidden lg:block lg:col-span-1">
             <div className="bg-gray-900/50 rounded-2xl border border-gray-800 p-6 sticky top-8">
               <div className="space-y-2">
                 {tabs.map((tab) => (
@@ -822,66 +844,68 @@ const Profile = () => {
               {/* Profile Tab */}
               {activeTab === 'profile' && (
                 <div className="space-y-8">
-                  <div className="flex justify-between items-center">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                     <div>
                       <div className='flex items-center justify-between w-full gap-4'>
-                        <h2 className="text-2xl font-bold text-white w-[300px]">Profile Information</h2>
-                        <LogOut className="w-5 h-5 cursor-pointer" title="Logout" onClick={handleLogout} />
+                        <h2 className="text-2xl font-bold text-white">Profile Information</h2>
+                        <LogOut
+                          className="w-5 h-5 cursor-pointer hidden lg:block"
+                          title="Logout"
+                          onClick={handleLogout}
+                        />
                       </div>
                       <p className="text-gray-400">Manage your personal details</p>
                     </div>
                     <button
                       onClick={() => setIsEditing(!isEditing)}
-                      className="flex items-center space-x-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-xl transition-colors duration-300"
+                      className="flex items-center justify-center space-x-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-xl transition-colors duration-300 w-full sm:w-auto"
                     >
                       <Edit3 className="w-4 h-4" />
                       <span>{isEditing ? 'Cancel' : 'Edit Profile'}</span>
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                  <div className="grid grid-cols-1 gap-8">
                     {/* Profile Picture */}
-                    <div className="lg:col-span-1">
-                      <div className="text-center">
-                        <div className="relative inline-block">
-                          <div className="w-32 h-32 bg-gray-700 rounded-2xl flex items-center justify-center mx-auto mb-4 overflow-hidden">
-                            {profileData.profilePic ? (
-                              <img
-                                src={profileData.profilePic}
-                                alt="Profile"
-                                className="w-32 h-32 rounded-2xl object-cover"
-                              />
-                            ) : (
-                              <User className="w-16 h-16 text-gray-400" />
-                            )}
-                          </div>
-                          {isEditing && (
-                            <label className="absolute bottom-2 right-2 bg-orange-500 hover:bg-orange-600 text-white p-2 rounded-full transition-colors duration-300 cursor-pointer">
-                              {uploading ? (
-                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                              ) : (
-                                <Edit3 className="w-4 h-4" />
-                              )}
-                              <input
-                                type="file"
-                                accept="image/*"
-                                onChange={handleProfilePicChange}
-                                className="hidden"
-                                disabled={uploading}
-                              />
-                            </label>
+                    <div className="text-center">
+                      <div className="relative inline-block">
+                        <div className="w-32 h-32 bg-gray-700 rounded-2xl flex items-center justify-center mx-auto mb-4 overflow-hidden">
+                          {profileData.profilePic ? (
+                            <img
+                              src={profileData.profilePic}
+                              alt="Profile"
+                              className="w-32 h-32 rounded-2xl object-cover"
+                            />
+                          ) : (
+                            <User className="w-16 h-16 text-gray-400" />
                           )}
                         </div>
-                        <p className="text-gray-400 text-sm">
-                          {isEditing ? 'Click on edit icon to update profile picture' : 'Edit profile to update picture'}
-                        </p>
+                        {isEditing && (
+                          <label className="absolute bottom-2 right-2 bg-orange-500 hover:bg-orange-600 text-white p-2 rounded-full transition-colors duration-300 cursor-pointer">
+                            {uploading ? (
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            ) : (
+                              <Edit3 className="w-4 h-4" />
+                            )}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleProfilePicChange}
+                              className="hidden"
+                              disabled={uploading}
+                            />
+                          </label>
+                        )}
                       </div>
+                      <p className="text-gray-400 text-sm">
+                        {isEditing ? 'Click on edit icon to update profile picture' : 'Edit profile to update picture'}
+                      </p>
                     </div>
 
                     {/* Profile Form */}
-                    <div className="lg:col-span-2">
+                    <div>
                       <form onSubmit={handleSaveProfile} className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 gap-6">
                           <div>
                             <label className="block text-sm font-medium text-gray-300 mb-2">
                               Full Name
@@ -906,7 +930,7 @@ const Profile = () => {
                               className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:opacity-50"
                             />
                           </div>
-                          <div className="md:col-span-2">
+                          <div>
                             <label className="block text-sm font-medium text-gray-300 mb-2">
                               Email Address
                             </label>
@@ -921,10 +945,10 @@ const Profile = () => {
                         </div>
 
                         {isEditing && (
-                          <div className="flex space-x-3">
+                          <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
                             <button
                               type="submit"
-                              className="flex items-center space-x-2 bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg transition-colors duration-300"
+                              className="flex items-center justify-center space-x-2 bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg transition-colors duration-300"
                             >
                               <Save className="w-4 h-4" />
                               <span>Save Changes</span>
@@ -932,7 +956,7 @@ const Profile = () => {
                             <button
                               type="button"
                               onClick={() => setIsEditing(false)}
-                              className="flex items-center space-x-2 border border-gray-600 text-gray-300 hover:text-white hover:border-gray-500 px-6 py-3 rounded-lg transition-colors duration-300"
+                              className="flex items-center justify-center space-x-2 border border-gray-600 text-gray-300 hover:text-white hover:border-gray-500 px-6 py-3 rounded-lg transition-colors duration-300"
                             >
                               <span>Cancel</span>
                             </button>
@@ -983,6 +1007,50 @@ const Profile = () => {
           </div>
         </div>
       </div>
+
+      {/* Mobile Side Panel */}
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+          <motion.div
+            initial={{ x: -300 }}
+            animate={{ x: 0 }}
+            exit={{ x: -300 }}
+            className="absolute left-0 top-0 h-full w-80 bg-gray-900 border-r border-gray-800 overflow-y-auto"
+          >
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-8">
+                <h2 className="text-xl font-bold text-white">Navigation</h2>
+                <button
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="p-2 text-gray-400 hover:text-white"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <nav className="space-y-2">
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => handleTabChange(tab.id)}
+                    className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 font-medium ${activeTab === tab.id
+                      ? 'bg-orange-500 text-white'
+                      : 'text-gray-300 hover:text-white hover:bg-gray-800'
+                      }`}
+                  >
+                    <tab.icon className="w-5 h-5" />
+                    <span>{tab.label}</span>
+                  </button>
+                ))}
+              </nav>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 };

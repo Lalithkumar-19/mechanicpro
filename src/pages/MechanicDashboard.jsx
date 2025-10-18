@@ -7,7 +7,7 @@ import {
   MapPin, Phone, Mail, Car, Filter, Search, Star,
   TrendingUp, Users, DollarSign, AlertCircle, Edit3,
   Plus, Truck, Shield, Zap, Sparkles, Eye, ChevronLeft, ChevronRight, X,
-  LogOut
+  LogOut, Menu
 } from 'lucide-react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -49,6 +49,7 @@ const MechanicDashboard = () => {
   });
 
   const [sparePartSearch, setSparePartSearch] = useState('');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const itemsPerPage = 10;
 
   // Check authentication on component mount
@@ -146,8 +147,6 @@ const MechanicDashboard = () => {
     (currentSparePartPage - 1) * itemsPerPage,
     currentSparePartPage * itemsPerPage
   );
-
-
 
   // Update booking status with API call
   const updateBookingStatus = async (bookingId, newStatus) => {
@@ -362,9 +361,11 @@ const MechanicDashboard = () => {
   };
   const mechanicInfo = JSON.parse(localStorage.getItem('mechanic_info') || '{}');
 
-
-
-
+  // Handle tab change for mobile
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId);
+    setMobileMenuOpen(false);
+  };
 
   useEffect(() => {
 
@@ -407,9 +408,6 @@ const MechanicDashboard = () => {
     };
   }, [mechanicInfo.id]);
 
-
-
-
   if (loading) {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center">
@@ -421,8 +419,6 @@ const MechanicDashboard = () => {
     );
   }
 
-
-
   return (
     <div className="min-h-screen bg-black text-white">
       {/* Header */}
@@ -431,18 +427,26 @@ const MechanicDashboard = () => {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between py-4">
             <div className="flex items-center space-x-4">
+              {/* Mobile Menu Button */}
+              <button
+                onClick={() => setMobileMenuOpen(true)}
+                className="lg:hidden p-2 text-gray-400 hover:text-white transition-colors duration-300"
+              >
+                <Menu className="w-6 h-6" />
+              </button>
+              
               <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center">
                 <img src='/logo.png' alt='logo' />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-white">MechanicPro Dashboard</h1>
-                <p className="text-gray-400 text-sm">{profileData.shopName || mechanicInfo.name}</p>
+                <h1 className="text-2xl font-bold text-white hidden  md:block">MechanicPro Dashboard</h1>
+                <p className="text-white text-lg md:text-sm">{profileData.shopName || mechanicInfo.name}</p>
               </div>
             </div>
 
             <div className="flex items-center space-x-6">
-              {/* Shop Status Toggle */}
-              <div className="flex items-center space-x-3">
+              {/* Shop Status Toggle - Hidden on mobile */}
+              <div className="hidden sm:flex items-center space-x-3">
                 <span className="text-gray-300 text-sm font-medium">
                   {shopStatus ? 'Garage Open' : 'Garage Closed'}
                 </span>
@@ -460,7 +464,7 @@ const MechanicDashboard = () => {
 
               {/* Notifications */}
               <button
-                onClick={() => setActiveTab('notifications')}
+                onClick={() => handleTabChange('notifications')}
                 className="relative p-2 text-gray-400 hover:text-white transition-colors duration-300"
               >
                 <Bell className="w-6 h-6" />
@@ -481,7 +485,7 @@ const MechanicDashboard = () => {
               </button>
 
               {/* Profile */}
-              <div className="relative">
+              <div className="hidden md:block relative">
                 <div className="w-16 h-16 bg-orange-500/20 rounded-xl flex items-center justify-center overflow-hidden">
                   {profileData.profilePic ? (
                     <img
@@ -515,10 +519,29 @@ const MechanicDashboard = () => {
         </div>
       </div>
 
+      {/* Mobile Shop Status Toggle */}
+      <div className="sm:hidden bg-gray-800 border-b border-gray-700 py-2">
+        <div className="container mx-auto px-4 flex items-center justify-center space-x-3">
+          <span className="text-gray-300 text-sm font-medium">
+            {shopStatus ? 'Garage Open' : 'Garage Closed'}
+          </span>
+          <button
+            onClick={toggleShopStatus}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 ${shopStatus ? 'bg-orange-500' : 'bg-gray-600'
+              }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300 ${shopStatus ? 'translate-x-6' : 'translate-x-1'
+                }`}
+            />
+          </button>
+        </div>
+      </div>
+
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Sidebar Navigation */}
-          <div className="lg:col-span-1">
+          {/* Sidebar Navigation - Hidden on mobile, shown in overlay */}
+          <div className="hidden lg:block lg:col-span-1">
             <div className="bg-gray-900/50 rounded-2xl border border-gray-800 p-6 sticky top-24">
               <nav className="space-y-2">
                 {tabs.map((tab) => (
@@ -673,12 +696,12 @@ const MechanicDashboard = () => {
                   animate={{ opacity: 1, y: 0 }}
                   className="space-y-6"
                 >
-                  <div className="flex justify-between items-center">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                     <div>
                       <h2 className="text-2xl font-bold text-white mb-2">Service Bookings</h2>
                       <p className="text-gray-400">Manage all incoming service requests</p>
                     </div>
-                    <div className="flex space-x-3">
+                    <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                         <input
@@ -686,7 +709,7 @@ const MechanicDashboard = () => {
                           placeholder="Search bookings..."
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
-                          className="pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                          className="w-full pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
                         />
                       </div>
                       <select
@@ -704,14 +727,14 @@ const MechanicDashboard = () => {
                     </div>
                   </div>
 
-                  <div className="space-y-4">
+                  <div className="space-y-4 overflow-x-scroll">
                     {paginatedBookings.length > 0 ? (
                       paginatedBookings.map((booking) => (
                         <div key={booking.id} className="bg-gray-800 rounded-2xl p-6 border border-gray-700 hover:border-orange-500/40 transition-all duration-300">
                           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
                             {/* Booking Info */}
                             <div className="flex-1">
-                              <div className="flex items-center space-x-4 mb-4">
+                              <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 mb-4">
                                 <div className="flex items-center space-x-2">
                                   {getStatusIcon(booking.status)}
                                   <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(booking.status)}`}>
@@ -747,7 +770,7 @@ const MechanicDashboard = () => {
 
                             {/* Actions */}
                             <div className="flex flex-col space-y-2">
-                              <div className="flex space-x-2">
+                              <div className="flex flex-col sm:flex-row sm:space-x-2 space-y-2 sm:space-y-0">
                                 {/* Status Update Dropdown */}
                                 <select
                                   value={booking.status}
@@ -763,7 +786,7 @@ const MechanicDashboard = () => {
 
                                 <button
                                   onClick={() => setSelectedBooking(booking)}
-                                  className="flex items-center space-x-1 border border-gray-600 text-gray-300 hover:text-white hover:border-gray-500 px-3 py-2 rounded-lg transition-colors duration-300 text-sm font-medium"
+                                  className="flex items-center justify-center space-x-1 border border-gray-600 text-gray-300 hover:text-white hover:border-gray-500 px-3 py-2 rounded-lg transition-colors duration-300 text-sm font-medium"
                                 >
                                   <Eye className="w-4 h-4" />
                                   <span>Details</span>
@@ -776,7 +799,7 @@ const MechanicDashboard = () => {
                                     // setSelectedBooking(booking);
                                     setShowSparePartForm(true);
                                   }}
-                                  className="flex items-center space-x-1 border border-gray-600 text-gray-300 hover:text-white hover:border-gray-500 px-3 py-2 rounded-lg transition-colors duration-300 text-sm font-medium"
+                                  className="flex items-center justify-center space-x-1 border border-gray-600 text-gray-300 hover:text-white hover:border-gray-500 px-3 py-2 rounded-lg transition-colors duration-300 text-sm font-medium"
                                 >
                                   <Package className="w-4 h-4" />
                                   <span>Request Parts</span>
@@ -837,12 +860,12 @@ const MechanicDashboard = () => {
                   animate={{ opacity: 1, y: 0 }}
                   className="space-y-6"
                 >
-                  <div className="flex justify-between items-center">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                     <div>
                       <h2 className="text-2xl font-bold text-white mb-2">Spare Parts Management</h2>
                       <p className="text-gray-400">Track and manage spare part requests</p>
                     </div>
-                    <div className="flex space-x-3">
+                    <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                         <input
@@ -850,12 +873,12 @@ const MechanicDashboard = () => {
                           placeholder="Search parts..."
                           value={sparePartSearch}
                           onChange={(e) => setSparePartSearch(e.target.value)}
-                          className="pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                          className="w-full pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
                         />
                       </div>
                       {/* <button
                         onClick={() => setShowSparePartForm(true)}
-                        className="flex items-center space-x-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-xl transition-colors duration-300"
+                        className="flex items-center justify-center space-x-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-xl transition-colors duration-300"
                       >
                         <Plus className="w-4 h-4" />
                         <span>New Request</span>
@@ -867,7 +890,7 @@ const MechanicDashboard = () => {
                     {paginatedSpareParts.length > 0 ? (
                       paginatedSpareParts.map((request) => (
                         <div key={request.id} className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
-                          <div className="flex items-center justify-between mb-4">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 space-y-3 sm:space-y-0">
                             <div className="flex items-center space-x-3">
                               <div className="w-10 h-10 bg-purple-500/20 rounded-xl flex items-center justify-center">
                                 <Package className="w-5 h-5 text-purple-400" />
@@ -947,7 +970,7 @@ const MechanicDashboard = () => {
                   animate={{ opacity: 1, y: 0 }}
                   className="space-y-6"
                 >
-                  <div className="flex justify-between items-center">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                     <div>
                       <h2 className="text-2xl font-bold text-white mb-2">Notifications</h2>
                       <p className="text-gray-400">Stay updated with real-time alerts</p>
@@ -955,7 +978,7 @@ const MechanicDashboard = () => {
                     {notifications.length > 0 && (
                       <button
                         onClick={clearAllNotifications}
-                        className="flex items-center space-x-2 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl transition-colors duration-300"
+                        className="flex items-center justify-center space-x-2 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl transition-colors duration-300"
                       >
                         <X className="w-4 h-4" />
                         <span>Clear All</span>
@@ -1008,14 +1031,14 @@ const MechanicDashboard = () => {
                   animate={{ opacity: 1, y: 0 }}
                   className="space-y-8"
                 >
-                  <div className="flex justify-between items-center">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                     <div>
                       <h2 className="text-2xl font-bold text-white mb-2">Shop Profile</h2>
                       <p className="text-gray-400">Manage your workshop details and settings</p>
                     </div>
                     <button
                       onClick={editingProfile ? handleProfileSave : handleProfileEdit}
-                      className="flex items-center space-x-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-xl transition-colors duration-300"
+                      className="flex items-center justify-center space-x-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-xl transition-colors duration-300"
                     >
                       <Edit3 className="w-4 h-4" />
                       <span>{editingProfile ? 'Save Profile' : 'Edit Profile'}</span>
@@ -1133,6 +1156,74 @@ const MechanicDashboard = () => {
         </div>
       </div>
 
+      {/* Mobile Side Panel */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 z-50 lg:hidden"
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            <motion.div
+              initial={{ x: -300 }}
+              animate={{ x: 0 }}
+              exit={{ x: -300 }}
+              className="w-80 h-full bg-gray-900 border-r border-gray-800 overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-8">
+                  <h2 className="text-xl font-bold text-white">Navigation</h2>
+                  <button
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="text-gray-400 hover:text-white"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+
+                <nav className="space-y-2 mb-8">
+                  {tabs.map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => handleTabChange(tab.id)}
+                      className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 font-medium ${activeTab === tab.id
+                        ? 'bg-orange-500 text-white'
+                        : 'text-gray-300 hover:text-white hover:bg-gray-800'
+                        }`}
+                    >
+                      <tab.icon className="w-5 h-5" />
+                      <span>{tab.label}</span>
+                    </button>
+                  ))}
+                </nav>
+
+                {/* Quick Stats */}
+                <div className="pt-6 border-t border-gray-800">
+                  <h3 className="text-sm font-semibold text-gray-400 mb-3">Today's Overview</h3>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-gray-300">Total Services</span>
+                      <span className="text-white font-semibold">{dashboardStats.totalServices}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-gray-300">In Progress</span>
+                      <span className="text-orange-400 font-semibold">{dashboardStats.inProgress}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-gray-300">Pending</span>
+                      <span className="text-amber-400 font-semibold">{dashboardStats.pendingRequests}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Spare Part Request Modal */}
       <AnimatePresence>
         {showSparePartForm && (
@@ -1232,7 +1323,7 @@ const MechanicDashboard = () => {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-gray-900 rounded-2xl p-6 w-full max-w-2xl border border-gray-700"
+              className="bg-gray-900 rounded-2xl p-6 w-full max-w-2xl border border-gray-700 max-h-[90vh] overflow-y-auto"
             >
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-bold text-white">Booking Details</h3>
@@ -1278,13 +1369,13 @@ const MechanicDashboard = () => {
                   </div>
                 )}
 
-                <div className="flex justify-between items-center pt-4 border-t border-gray-700">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 pt-4 border-t border-gray-700">
                   <div>
                     <span className="text-gray-400 text-sm">Total Amount:</span>
                     <span className="text-orange-400 font-bold text-xl ml-2">₹{selectedBooking.amount}</span>
                   </div>
 
-                  <div className="flex space-x-2">
+                  <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
                     <select
                       value={selectedBooking.status}
                       onChange={(e) => {
@@ -1302,7 +1393,7 @@ const MechanicDashboard = () => {
 
                     <button
                       onClick={() => setShowSparePartForm(true)}
-                      className="flex items-center space-x-1 border border-gray-600 text-gray-300 hover:text-white hover:border-gray-500 px-3 py-2 rounded-lg transition-colors duration-300 text-sm font-medium"
+                      className="flex items-center justify-center space-x-1 border border-gray-600 text-gray-300 hover:text-white hover:border-gray-500 px-3 py-2 rounded-lg transition-colors duration-300 text-sm font-medium"
                     >
                       <Package className="w-4 h-4" />
                       <span>Request Parts</span>
