@@ -762,6 +762,7 @@ const Profile = () => {
 
   const handleLogout = () => {
     localStorage.removeItem('userInfo');
+    localStorage.removeItem("user_token");
     navigate('/login');
   };
 

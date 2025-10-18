@@ -10,7 +10,7 @@ import {
   X,
   AlertCircle
 } from 'lucide-react';
-import axiosInstance from '../utils/axiosInstance';
+import axiosInstance from '../utils/axiosinstance';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -51,6 +51,14 @@ const BookingPage = () => {
   const [userCars, setUserCars] = useState([]);
   const [mechanic, setMechanic] = useState(null);
   const [error, setError] = useState('');
+
+
+  useEffect(() => {
+    const token = localStorage.getItem('user_token');
+    if (!token) {
+      navigate('/login');
+    }
+  }, [])
 
   // Time slots from 9 AM to 5 PM
   const timeSlots = [

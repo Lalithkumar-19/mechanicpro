@@ -11,7 +11,7 @@ const Home = () => {
   return (
     <div
 
-      className='flex flex-col w-full bg-black'>
+      className='flex flex-col w-full h-full bg-black'>
       {/* WhatsApp Floating Button */}
       <motion.div
         initial={{ opacity: 0, scale: 0 }}
