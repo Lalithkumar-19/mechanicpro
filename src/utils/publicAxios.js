@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const publicAxios = axios.create({
-    baseURL: "https://backend.mechanicpro.in/api",
+    baseURL: "https://mechpro-backend.vercel.app/api",//"https://backend.mechanicpro.in/api",
     headers: {
         "Content-Type": "application/json"
     }

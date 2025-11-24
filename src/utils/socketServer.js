@@ -1,3 +1,3 @@
 import { io } from "socket.io-client";
 
-export const socket = io("https://backend.mechanicpro.in");
+export const socket = io("https://mechpro-backend.vercel.app/");
