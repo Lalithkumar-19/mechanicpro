@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import "./App.css";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
 import Home from './pages/Home';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -14,9 +14,17 @@ import MechanicLogin from './pages/MechanicLogin';
 import { ToastContainer, toast } from 'react-toastify';
 import { getFcmToken, requestNotificationPermission, sendTokenToBackend, setupFCM } from './notifications/Notifications';
 
-const App = () => {
-
+// Wrapper component to access useLocation
+const AppContent = () => {
+  const location = useLocation();
   const [fcmToken, setFcmToken] = useState(null);
+
+  // Check if current path should hide header/footer
+  const shouldHideHeaderFooter = () => {
+    const path = location.pathname;
+    return path === '/mechanic-dashboard' || path === '/admin';
+  };
+
   useEffect(() => {
     console.log(getFcmToken(), "fcm");
     setupFCM(); // handle foreground messages
@@ -51,7 +59,7 @@ const App = () => {
   useEffect(() => {
     const user = localStorage.getItem('userInfo');
     const mechanic = localStorage.getItem('mechanic_info');
-    const admin = localStorage.getItem('admin_info');
+    const admin = localStorage.getItem('admin_id');
     if (fcmToken !== null) {
       if (user !== null) {
         const userId = JSON.parse(localStorage.getItem('userInfo'))._id;
@@ -72,35 +80,42 @@ const App = () => {
   }, [fcmToken]);
 
 
-  console.log(fcmToken, "fcm tiken")
+  console.log(fcmToken, "fcm token")
 
 
 
   return (
-    <Router>
-      <div className='bg-black w-full min-h-screen flex flex-col overflow-x-hidden'>
-        <ToastContainer />
-        <Header />
+    <div className='bg-black w-full min-h-screen flex flex-col overflow-x-hidden'>
+      <ToastContainer />
+      {!shouldHideHeaderFooter() && <Header />}
 
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/login" element={<Login onLoginSuccess={requestNotificationPermission} />} />
-          <Route path='/find-mechanics' element={<FindMechanic />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/booking/:id" element={<BookingPage />} />
-          <Route path="/mechanic-dashboard" element={<MechanicDashboard />} />
-          <Route path="/mechanic-login" element={<MechanicLogin onLoginSuccess={requestNotificationPermission} />} />
-          <Route path='admin' element={<SuperAdminDashboard />} />
-          <Route path="/*" element={
-            <div className='mt-[200px]'>
-              <h1 className='text-4xl font-bold text-white'>404 Not Found</h1>
-            </div>
-          } />
-        </Routes>
-        <Footer />
-      </div>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/login" element={<Login onLoginSuccess={requestNotificationPermission} />} />
+        <Route path='/find-mechanics' element={<FindMechanic />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/booking/:id" element={<BookingPage />} />
+        <Route path="/mechanic-dashboard" element={<MechanicDashboard />} />
+        <Route path="/mechanic-login" element={<MechanicLogin onLoginSuccess={requestNotificationPermission} />} />
+        <Route path='/admin' element={<SuperAdminDashboard />} />
+        <Route path="/*" element={
+          <div className='mt-[200px]'>
+            <h1 className='text-4xl font-bold text-white'>404 Not Found</h1>
+          </div>
+        } />
+      </Routes>
+      
+      {!shouldHideHeaderFooter() && <Footer />}
+    </div>
+  );
+};
+
+const App = () => {
+  return (
+    <Router>
+      <AppContent />
     </Router>
-  )
-}
+  );
+};
 
 export default App;

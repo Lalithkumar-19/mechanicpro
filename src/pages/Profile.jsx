@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import {
   User, Settings, Car, Calendar, Bell, Edit3, Save, Trash2,
   Plus, Phone, Mail, MapPin, Clock, CheckCircle, XCircle,
@@ -10,7 +11,10 @@ import {
   DollarSign,
   PhoneIcon,
   MapPinIcon,
-  Menu
+  Menu,
+  FileText,
+  Download,
+  Printer
 } from 'lucide-react';
 import axiosInstance from '../utils/axiosinstance';
 import { uploadToImgBB } from '../utils/uploadtoImbb';
@@ -228,11 +232,115 @@ const CarBook = ({ cars, onAddCar, onEditCar, onDeleteCar, loading }) => {
     </div>
   );
 };
-const BookingsManagement = ({ bookings, loading }) => {
+const BookingsManagement = ({ bookings, loading, cars }) => {
   const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showBillModal, setShowBillModal] = useState(false);
+  const [billData, setBillData] = useState(null);
+  const [loadingBill, setLoadingBill] = useState(false);
+
+  // Format booking ID to vehicle registration + date format
+  const formatBookingId = (booking) => {
+    if (!booking) return 'N/A';
+    
+    try {
+      // Find the car from cars array by matching car name
+      const matchedCar = cars.find(car => 
+        car.name === booking.carName || car.model === booking.carName
+      );
+      
+      // Use license plate if available, otherwise fallback to car name
+      const vehicleInfo = (matchedCar?.licensePlate || booking.carName)
+        ?.replace(/\s+/g, '')
+        .toUpperCase() || 'UNKNOWN';
+      
+      // Parse the scheduled date and format as DDMMYYYY
+      const bookingDate = new Date(booking.scheduledDate);
+      const day = bookingDate.getDate().toString().padStart(2, '0');
+      const month = (bookingDate.getMonth() + 1).toString().padStart(2, '0');
+      const year = bookingDate.getFullYear();
+      
+      return `${vehicleInfo}${day}${month}${year}`;
+    } catch (error) {
+      console.error('Error formatting booking ID:', error);
+      return booking.id || 'N/A';
+    }
+  };
+
+  // Format bill number from bill data
+  const formatBillNumber = (bill) => {
+    if (!bill) return 'N/A';
+    
+    try {
+      // Get vehicle plate number
+      const vehicleNo = bill.vehicleDetails?.plateNumber?.replace(/\s+/g, '').toUpperCase() || 'UNKNOWN';
+      
+      // Parse the generated date and format as DDMMYYYY
+      const billDate = new Date(bill.generatedAt);
+      const day = billDate.getDate().toString().padStart(2, '0');
+      const month = (billDate.getMonth() + 1).toString().padStart(2, '0');
+      const year = billDate.getFullYear();
+      
+      return `${vehicleNo}${day}${month}${year}`;
+    } catch (error) {
+      console.error('Error formatting bill number:', error);
+      return bill.billNumber || 'N/A';
+    }
+  };
+
+  // Fetch bill data for a booking
+  const fetchBillData = async (bookingId) => {
+    try {
+      setLoadingBill(true);
+      const response = await axiosInstance.get(`/mechanic/bill/booking/${bookingId}`);
+      
+      if (response.data.success) {
+        setBillData(response.data.bill);
+        setShowBillModal(true);
+      } else {
+        toast.error('No bill found for this booking');
+      }
+    } catch (error) {
+      console.error('Error fetching bill:', error);
+      toast.error('Failed to load bill details');
+    } finally {
+      setLoadingBill(false);
+    }
+  };
+
+  // Print bill as PDF
+  const handlePrintBill = async () => {
+    if (!billData) return;
+
+    try {
+      const response = await axiosInstance.get(`/mechanic/bill/${billData._id}/pdf`, {
+        responseType: 'blob'
+      });
+
+      // Create a blob URL and trigger download
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `bill-${billData.billNumber}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast.success('Bill downloaded successfully');
+    } catch (error) {
+      console.error('Error downloading bill:', error);
+      toast.error('Failed to download bill');
+    }
+  };
+
+  const closeBillModal = () => {
+    setShowBillModal(false);
+    setBillData(null);
+  };
 
   const filteredBookings = bookings.filter(booking => {
     const matchesSearch = booking.carName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -380,7 +488,7 @@ const BookingsManagement = ({ bookings, loading }) => {
                     </span>
                   </div>
                   <div className="text-sm text-gray-400">
-                    Booking ID: <span className="text-white font-mono">{booking.id}</span>
+                    Booking ID: <span className="text-white font-mono">{formatBookingId(booking)}</span>
                   </div>
                 </div>
 
@@ -413,18 +521,34 @@ const BookingsManagement = ({ bookings, loading }) => {
               </div>
 
               {/* Actions */}
-              <div className="flex space-x-3">
+              <div className="flex flex-col space-y-2">
                 <button
                   onClick={() => handleViewDetails(booking)}
                   className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl transition-colors duration-300 text-sm font-medium"
                 >
                   View Details
                 </button>
-                {/* {booking.status === 'pending' && (
-                  <button className="px-4 py-2 border border-gray-600 text-gray-300 hover:text-white hover:border-gray-500 rounded-xl transition-colors duration-300 text-sm font-medium">
-                    Cancel
+                
+                {/* Show Bill button for completed bookings */}
+                {booking.status === 'completed' && (
+                  <button
+                    onClick={() => fetchBillData(booking.id)}
+                    disabled={loadingBill}
+                    className="flex items-center justify-center space-x-2 px-4 py-2 bg-green-500 hover:bg-green-600 disabled:bg-gray-600 text-white rounded-xl transition-colors duration-300 text-sm font-medium"
+                  >
+                    {loadingBill ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        <span>Loading...</span>
+                      </>
+                    ) : (
+                      <>
+                        <FileText className="w-4 h-4" />
+                        <span>Show Bill</span>
+                      </>
+                    )}
                   </button>
-                )} */}
+                )}
               </div>
             </div>
 
@@ -475,7 +599,7 @@ const BookingsManagement = ({ bookings, loading }) => {
             <div className="flex items-center justify-between p-6 border-b border-gray-700">
               <div>
                 <h3 className="text-xl font-bold text-white">Booking Details</h3>
-                <p className="text-gray-400 text-sm">Booking ID: {selectedBooking.id}</p>
+                <p className="text-gray-400 text-sm">Booking ID: <span className="font-mono text-white">{formatBookingId(selectedBooking)}</span></p>
               </div>
               <button
                 onClick={closeModal}
@@ -487,14 +611,24 @@ const BookingsManagement = ({ bookings, loading }) => {
 
             {/* Modal Content */}
             <div className="p-6 space-y-6">
+              {/* Booking ID Display */}
+              <div className="bg-gray-700/30 rounded-xl p-4 border border-gray-600">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gray-400 text-sm">Booking ID</p>
+                    <p className="text-white font-mono text-lg font-semibold">{formatBookingId(selectedBooking)}</p>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    {getStatusIcon(selectedBooking.status)}
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(selectedBooking.status)}`}>
+                      {selectedBooking.status.replace('-', ' ').toUpperCase()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
               {/* Status */}
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  {getStatusIcon(selectedBooking.status)}
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(selectedBooking.status)}`}>
-                    {selectedBooking.status.replace('-', ' ').toUpperCase()}
-                  </span>
-                </div>
                 <div className="text-sm text-gray-400">
                   Booked on: <span className="text-white">{selectedBooking.bookedDate}</span>
                 </div>
@@ -593,20 +727,193 @@ const BookingsManagement = ({ bookings, loading }) => {
             </div>
 
             {/* Modal Footer */}
-            <div className="flex justify-end space-x-3 p-6 border-t border-gray-700">
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-3 p-6 border-t border-gray-700">
+              {/* Get Directions Button - Left Aligned */}
               <button
-                onClick={closeModal}
-                className="px-6 py-2 border border-gray-600 text-gray-300 hover:text-white hover:border-gray-500 rounded-xl transition-colors duration-300"
+                onClick={() => {
+                  const destination = encodeURIComponent(selectedBooking.location);
+                  window.open(`https://www.google.com/maps/dir/?api=1&destination=${destination}`, '_blank');
+                }}
+                className="flex items-center justify-center space-x-2 px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl transition-colors duration-300 w-full sm:w-auto"
+              >
+                <MapPin className="w-4 h-4" />
+                <span>Get Directions</span>
+              </button>
+
+              {/* Right Side Buttons */}
+              <div className="flex space-x-3 w-full sm:w-auto">
+                <button
+                  onClick={closeModal}
+                  className="flex-1 sm:flex-none px-6 py-2 border border-gray-600 text-gray-300 hover:text-white hover:border-gray-500 rounded-xl transition-colors duration-300"
+                >
+                  Close
+                </button>
+                {selectedBooking.status === 'pending' && (
+                  <button
+                    onClick={handleCancel}
+                    className="flex-1 sm:flex-none px-6 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl transition-colors duration-300">
+                    Cancel Booking
+                  </button>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Bill Modal */}
+      {showBillModal && billData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden"
+          >
+            {/* Bill Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-orange-500 to-orange-600">
+              <div className="flex items-center space-x-3">
+                <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center">
+                  <img src='/logo.png' alt='logo' className="w-full h-full object-contain p-2" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white">Mechanic Pro</h3>
+                  <p className="text-white/90 text-sm">Your Vehicle In Safer Hands</p>
+                </div>
+              </div>
+              <button
+                onClick={closeBillModal}
+                className="p-2 hover:bg-white/20 rounded-xl transition-colors duration-200"
+              >
+                <X className="w-6 h-6 text-white" />
+              </button>
+            </div>
+
+            {/* Bill Content */}
+            <div className="p-8 overflow-y-auto max-h-[calc(90vh-200px)]">
+              {/* Invoice Header */}
+              <div className="text-right mb-6">
+                <h2 className="text-3xl font-bold text-gray-800">INVOICE</h2>
+              </div>
+
+              {/* Bill Info and Vehicle Details */}
+              <div className="grid grid-cols-2 gap-6 mb-6">
+                <div>
+                  <div className="flex items-baseline gap-2">
+                    <p className="text-sm text-gray-600">Vehicle No :-</p>
+                    <p className="font-semibold text-gray-800">{billData.vehicleDetails?.plateNumber || 'N/A'}</p>
+                  </div>
+                  <div className="flex items-baseline gap-2 mt-2">
+                    <p className="text-sm text-gray-600">Brand / Model :-</p>
+                    <p className="font-semibold text-gray-800">{billData.vehicleDetails?.make}/{billData.vehicleDetails?.model || 'N/A'}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="flex items-baseline justify-end gap-2">
+                    <p className="text-sm text-gray-600">Invoice No:-</p>
+                    <p className="font-semibold text-gray-800">{formatBillNumber(billData)}</p>
+                  </div>
+                  <div className="flex items-baseline justify-end gap-2 mt-2">
+                    <p className="text-sm text-gray-600">Date :-</p>
+                    <p className="font-semibold text-gray-800">{new Date(billData.generatedAt).toLocaleDateString()}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Items Table */}
+              <div className="mb-6">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="border-t-2 border-b-2 border-gray-800">
+                      <th className="text-left py-3 px-2 text-gray-900 font-semibold"><u>Item</u></th>
+                      <th className="text-right py-3 px-2 text-gray-900 font-semibold"><u>Price</u></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {billData.items?.map((item, index) => (
+                      <tr key={index} className="border-b border-gray-200">
+                        <td className="py-3 px-2 text-gray-700">{item.name}</td>
+                        <td className="py-3 px-2 text-right text-gray-700">{item.price}/-</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Totals */}
+              <div className="space-y-2 mb-8">
+                <div className="flex justify-between items-center text-lg">
+                  <span className="font-semibold text-gray-800">Total</span>
+                  <span className="font-bold text-gray-800">{billData.totalAmount}/-</span>
+                </div>
+                {billData.advanceReceived && (
+                  <div className="flex justify-between items-center text-lg">
+                    <span className="font-semibold text-gray-800">Advance Recieved</span>
+                    <span className="font-bold text-gray-800">-{billData.advanceReceived}/-</span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center text-xl border-t-2 border-gray-800 pt-2">
+                  <span className="font-bold text-gray-800">Balance To Be Paid</span>
+                  <span className="font-bold text-gray-800">
+                    {billData.advanceReceived 
+                      ? (billData.totalAmount - billData.advanceReceived)
+                      : billData.totalAmount}/-
+                  </span>
+                </div>
+              </div>
+
+              {/* PhonePe QR Code - Right Aligned */}
+              <div className="flex justify-end mb-6">
+                <div className="text-center">
+                  <img 
+                    src="/phonepe.png" 
+                    alt="PhonePe QR Code" 
+                    className="w-32 h-32 object-contain rounded-lg border border-gray-300"
+                  />
+                  <p className="text-xs text-gray-600 mt-2">Scan to Pay via PhonePe</p>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="border-t-2 border-gray-200 pt-6">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-sm text-gray-600 mb-2">Thank you ......</p>
+                    <p className="text-sm font-semibold text-gray-800">Have A Safe Ride - Visit Again</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-semibold text-gray-800 mb-1">Team MechanicPro</p>
+                    <p className="text-xs text-gray-600">Authorized Signed</p>
+                  </div>
+                </div>
+                <div className="mt-4 bg-orange-500 text-white px-4 py-2 rounded-lg flex justify-between items-center text-sm">
+                  <div>
+                    <p>📞 {billData.mechanicId?.phone || '9281487865, 9704787511'}</p>
+                    <p>🌐 www.mechanicpro.in</p>
+                  </div>
+                  <div className="text-right">
+                    <p>📍 A1 Car Service, Beside Power One Mall, Bundar Road</p>
+                    <p>Warangal Urban 506007</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex justify-between items-center p-6 border-t border-gray-200 bg-gray-50">
+              <button
+                onClick={closeBillModal}
+                className="px-6 py-2 border border-gray-300 text-gray-700 hover:bg-gray-100 rounded-xl transition-colors duration-300"
               >
                 Close
               </button>
-              {selectedBooking.status === 'pending' && (
-                <button
-                  onClick={handleCancel}
-                  className="px-6 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl transition-colors duration-300">
-                  Cancel Booking
-                </button>
-              )}
+              <button
+                onClick={handlePrintBill}
+                className="flex items-center space-x-2 px-6 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl transition-colors duration-300"
+              >
+                <Printer className="w-4 h-4" />
+                <span>Print PDF</span>
+              </button>
             </div>
           </motion.div>
         </div>
@@ -982,7 +1289,11 @@ const Profile = () => {
 
               {/* Bookings Tab */}
               {activeTab === 'bookings' && (
-                <BookingsManagement bookings={bookings} loading={bookingsLoading} />
+                <BookingsManagement 
+                  bookings={bookings} 
+                  loading={bookingsLoading}
+                  cars={cars}
+                />
               )}
 
               {/* Notifications Tab */}

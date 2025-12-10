@@ -7,11 +7,11 @@ import {
   MapPin, Phone, Mail, Car, Filter, Search, Star,
   TrendingUp, Users, DollarSign, AlertCircle, Edit3,
   Plus, Truck, Shield, Zap, Sparkles, Eye, ChevronLeft, ChevronRight, X,
-  LogOut, Menu
+  LogOut, Menu, FileText, Trash
 } from 'lucide-react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import mechanicaxios from '../utils/mechanicaxios';
+import mechanicaxiosInstance from '../utils/mechanicaxios';
 import { uploadToImgBB } from '../utils/uploadtoImbb';
 import { socket } from '../utils/socketServer';
 
@@ -25,6 +25,10 @@ const MechanicDashboard = () => {
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [showSparePartForm, setShowSparePartForm] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showBillModal, setShowBillModal] = useState(false);
+  const [selectedBookingForBill, setSelectedBookingForBill] = useState(null);
+  const [billItems, setBillItems] = useState([{ itemName: '', price: '' }]);
+  const [advancePaid, setAdvancePaid] = useState(0);
 
   // New state variables for functionality
   const [searchQuery, setSearchQuery] = useState('');
@@ -45,11 +49,17 @@ const MechanicDashboard = () => {
     partName: '',
     carModel: '',
     quantity: 1,
-    urgency: 'medium'
+    urgency: 'medium',
+    serialNumber: ''
   });
 
   const [sparePartSearch, setSparePartSearch] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [revenueStats, setRevenueStats] = useState({
+    totalRevenue: 0,
+    monthlyRevenue: 0,
+    lastMonthRevenue: 0
+  });
   const itemsPerPage = 10;
 
   // Check authentication on component mount
@@ -70,16 +80,51 @@ const MechanicDashboard = () => {
     try {
       setLoading(true);
       const [profileRes, statsRes, bookingsRes, sparePartsRes] = await Promise.all([
-        mechanicaxios.get('/profile'),
-        mechanicaxios.get('/dashboard-stats'),
-        mechanicaxios.get('/bookings?page=1&limit=100'),
-        mechanicaxios.get('/spare-parts?page=1&limit=100')
+        mechanicaxiosInstance.get('/profile'),
+        mechanicaxiosInstance.get('/dashboard-stats'),
+        mechanicaxiosInstance.get('/bookings?page=1&limit=100'),
+        mechanicaxiosInstance.get('/spare-parts?page=1&limit=100')
       ]);
 
       setProfileData(profileRes.data);
       setShopStatus(profileRes.data.isActive);
       setBookings(bookingsRes.data.bookings || []);
       setSparePartRequests(sparePartsRes.data.spareParts || []);
+
+      // Calculate revenue from completed bookings
+      const allBookings = bookingsRes.data.bookings || [];
+      const completedBookings = allBookings.filter(b => b.status === 'completed');
+      
+      const totalRevenue = completedBookings.reduce((sum, booking) => sum + (booking.amount || 0), 0);
+      
+      // Calculate monthly revenue (current month)
+      const now = new Date();
+      const currentMonth = now.getMonth();
+      const currentYear = now.getFullYear();
+      
+      const monthlyRevenue = completedBookings
+        .filter(booking => {
+          const bookingDate = new Date(booking.date);
+          return bookingDate.getMonth() === currentMonth && bookingDate.getFullYear() === currentYear;
+        })
+        .reduce((sum, booking) => sum + (booking.amount || 0), 0);
+      
+      // Calculate last month revenue
+      const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+      const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+      
+      const lastMonthRevenue = completedBookings
+        .filter(booking => {
+          const bookingDate = new Date(booking.date);
+          return bookingDate.getMonth() === lastMonth && bookingDate.getFullYear() === lastMonthYear;
+        })
+        .reduce((sum, booking) => sum + (booking.amount || 0), 0);
+
+      setRevenueStats({
+        totalRevenue,
+        monthlyRevenue,
+        lastMonthRevenue
+      });
 
       // Set notifications based on recent activities
       const recentNotifications = [];
@@ -151,7 +196,7 @@ const MechanicDashboard = () => {
   // Update booking status with API call
   const updateBookingStatus = async (bookingId, newStatus) => {
     try {
-      await mechanicaxios.put(`/bookings/${bookingId}/status`, {
+      await mechanicaxiosInstance.put(`/bookings/${bookingId}/status`, {
         status: newStatus
       });
 
@@ -179,7 +224,7 @@ const MechanicDashboard = () => {
   // Toggle shop status with API call
   const toggleShopStatus = async () => {
     try {
-      const response = await mechanicaxios.put('/shop-status', {
+      const response = await mechanicaxiosInstance.put('/shop-status', {
         isActive: !shopStatus
       });
 
@@ -199,7 +244,7 @@ const MechanicDashboard = () => {
     }
 
     try {
-      const response = await mechanicaxios.post('/spare-parts', {
+      const response = await mechanicaxiosInstance.post('/spare-parts', {
         ...newSparePart,
         serviceId: selectedBooking ? selectedBooking.id : 'N/A'
       });
@@ -210,7 +255,8 @@ const MechanicDashboard = () => {
         partName: '',
         carModel: '',
         quantity: 1,
-        urgency: 'medium'
+        urgency: 'medium',
+        serialNumber: ''
       });
       toast.success('New spare part request submitted');
     } catch (error) {
@@ -227,7 +273,7 @@ const MechanicDashboard = () => {
 
   const LoadBookings = async () => {
     try {
-      const res = await mechanicaxios.get('/bookings?page=1&limit=100');
+      const res = await mechanicaxiosInstance.get('/bookings?page=1&limit=100');
       if (res.status === 200) {
         setBookings(res.data);
       }
@@ -241,7 +287,7 @@ const MechanicDashboard = () => {
     try {
       // Parse address back to components for API
       const addressParts = profileData.address.split(', ');
-      const response = await mechanicaxios.put('/profile', {
+      const response = await mechanicaxiosInstance.put('/profile', {
         name: profileData.shopName,
         email: profileData.email,
         phone: profileData.phone,
@@ -286,7 +332,7 @@ const MechanicDashboard = () => {
       }));
 
       // Update profile in backend
-      await mechanicaxios.put('/profile', {
+      await mechanicaxiosInstance.put('/profile', {
         profile: imageUrl,
         name: profileData.shopName,
         email: profileData.email,
@@ -327,7 +373,12 @@ const MechanicDashboard = () => {
     pendingRequests: bookings.filter(b => b.status === 'pending').length,
     inProgress: bookings.filter(b => b.status === 'in-progress').length,
     completed: bookings.filter(b => b.status === 'completed').length,
-    pendingSpareParts: sparePartRequests.filter(s => s.status === 'pending').length
+    pendingSpareParts: sparePartRequests.filter(s => s.status === 'pending').length,
+    totalRevenue: revenueStats.totalRevenue,
+    monthlyRevenue: revenueStats.monthlyRevenue,
+    revenueGrowth: revenueStats.lastMonthRevenue > 0 
+      ? ((revenueStats.monthlyRevenue - revenueStats.lastMonthRevenue) / revenueStats.lastMonthRevenue * 100).toFixed(1)
+      : 0
   };
 
   const tabs = [
@@ -365,6 +416,73 @@ const MechanicDashboard = () => {
   const handleTabChange = (tabId) => {
     setActiveTab(tabId);
     setMobileMenuOpen(false);
+  };
+
+  // Bill management functions
+  const addBillItem = () => {
+    setBillItems([...billItems, { itemName: '', price: '' }]);
+  };
+
+  const removeBillItem = (index) => {
+    if (billItems.length > 1) {
+      const updatedItems = billItems.filter((_, i) => i !== index);
+      setBillItems(updatedItems);
+    }
+  };
+
+  const updateBillItem = (index, field, value) => {
+    const updatedItems = [...billItems];
+    updatedItems[index][field] = value;
+    setBillItems(updatedItems);
+  };
+
+  const calculateTotal = () => {
+    return billItems.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
+  };
+
+  const calculateBalance = () => {
+    const total = calculateTotal();
+    const advance = parseFloat(advancePaid) || 0;
+    return Math.max(total - advance, 0);
+  };
+
+  const handleGenerateBill = async () => {
+    try {
+      // Validate bill items
+      const validItems = billItems.filter(item => item.itemName && item.price);
+      
+      if (validItems.length === 0) {
+        toast.error('Please add at least one item to the bill');
+        return;
+      }
+
+      const totalAmount = validItems.reduce((sum, item) => sum + parseFloat(item.price || 0), 0);
+
+      const billData = {
+        bookingId: selectedBookingForBill.id,
+        items: validItems.map(item => ({
+          name: item.itemName,
+          price: parseFloat(item.price)
+        })),
+        totalAmount,
+        advanceReceived: parseFloat(advancePaid) || 0,
+        generatedAt: new Date().toISOString()
+      };
+
+      // Call API to save bill
+      const response = await mechanicaxiosInstance.post('/generate-bill', billData);
+      
+      if (response.status === 200) {
+        toast.success('Bill generated successfully');
+        setShowBillModal(false);
+        setBillItems([{ itemName: '', price: '' }]);
+        setAdvancePaid(0);
+        setSelectedBookingForBill(null);
+      }
+    } catch (error) {
+      console.error('Error generating bill:', error);
+      toast.error('Error generating bill');
+    }
   };
 
   useEffect(() => {
@@ -407,6 +525,27 @@ const MechanicDashboard = () => {
       socket.off("booking_update", handleNotification);
     };
   }, [mechanicInfo.id]);
+
+  // Format booking ID helper function
+  const formatBookingId = (booking) => {
+    if (!booking) return 'N/A';
+    
+    try {
+      // Get vehicle registration number (remove spaces and convert to uppercase)
+      const vehicleNo = booking.vehicle?.registration?.replace(/\s+/g, '').toUpperCase() || 'UNKNOWN';
+      
+      // Parse the date and format as DDMMYYYY
+      const bookingDate = new Date(booking.date);
+      const day = bookingDate.getDate().toString().padStart(2, '0');
+      const month = (bookingDate.getMonth() + 1).toString().padStart(2, '0');
+      const year = bookingDate.getFullYear();
+      
+      return `${vehicleNo}${day}${month}${year}`;
+    } catch (error) {
+      console.error('Error formatting booking ID:', error);
+      return booking.id || 'N/A';
+    }
+  };
 
   if (loading) {
     return (
@@ -533,7 +672,7 @@ const MechanicDashboard = () => {
             <span
               className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300 ${shopStatus ? 'translate-x-6' : 'translate-x-1'
                 }`}
-            />
+          />
           </button>
         </div>
       </div>
@@ -597,7 +736,7 @@ const MechanicDashboard = () => {
                   </div>
 
                   {/* Stats Grid */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
                       <div className="flex items-center justify-between">
                         <div>
@@ -642,6 +781,37 @@ const MechanicDashboard = () => {
                         </div>
                         <div className="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center">
                           <Package className="w-6 h-6 text-purple-400" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-gray-400 text-sm">Total Revenue</p>
+                          <p className="text-3xl font-bold text-green-400 mt-2">₹{dashboardStats.totalRevenue.toLocaleString()}</p>
+                          <p className="text-xs text-gray-500 mt-1">All time</p>
+                        </div>
+                        <div className="w-12 h-12 bg-green-500/20 rounded-xl flex items-center justify-center">
+                          <DollarSign className="w-6 h-6 text-green-400" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-gray-400 text-sm">Monthly Revenue</p>
+                          <p className="text-3xl font-bold text-emerald-400 mt-2">₹{dashboardStats.monthlyRevenue.toLocaleString()}</p>
+                          <div className="flex items-center mt-1">
+                            <span className={`text-xs font-medium ${parseFloat(dashboardStats.revenueGrowth) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                              {parseFloat(dashboardStats.revenueGrowth) >= 0 ? '↑' : '↓'} {Math.abs(dashboardStats.revenueGrowth)}%
+                            </span>
+                            <span className="text-xs text-gray-500 ml-1">vs last month</span>
+                          </div>
+                        </div>
+                        <div className="w-12 h-12 bg-emerald-500/20 rounded-xl flex items-center justify-center">
+                          <TrendingUp className="w-6 h-6 text-emerald-400" />
                         </div>
                       </div>
                     </div>
@@ -741,7 +911,7 @@ const MechanicDashboard = () => {
                                     {booking.status?.replace('-', ' ').toUpperCase()}
                                   </span>
                                 </div>
-                                <span className="text-gray-400 text-sm">ID: {booking.id}</span>
+                                <span className="text-gray-400 text-sm">ID: <span className="font-mono text-white">{formatBookingId(booking)}</span></span>
                               </div>
 
                               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -794,9 +964,21 @@ const MechanicDashboard = () => {
                               </div>
 
                               <div className="flex space-x-2">
+                                {booking.status === 'completed' && (
+                                  <button
+                                    onClick={() => {
+                                      setSelectedBookingForBill(booking);
+                                      setShowBillModal(true);
+                                    }}
+                                    className="flex items-center justify-center space-x-1 bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg transition-colors duration-300 text-sm font-medium"
+                                  >
+                                    <FileText className="w-4 h-4" />
+                                    <span>Generate Bill</span>
+                                  </button>
+                                )}
+                                
                                 <button
                                   onClick={() => {
-                                    // setSelectedBooking(booking);
                                     setShowSparePartForm(true);
                                   }}
                                   className="flex items-center justify-center space-x-1 border border-gray-600 text-gray-300 hover:text-white hover:border-gray-500 px-3 py-2 rounded-lg transition-colors duration-300 text-sm font-medium"
@@ -989,7 +1171,20 @@ const MechanicDashboard = () => {
                   <div className="space-y-4">
                     {recentNotifications.length > 0 ? (
                       recentNotifications.map((notification) => (
-                        <div key={notification.id} className="bg-gray-800 rounded-2xl p-4 border border-gray-700">
+                        <div 
+                          key={notification.id} 
+                          className="bg-gray-800 rounded-2xl p-4 border border-gray-700 cursor-pointer hover:bg-gray-700/50 transition-colors duration-300"
+                          onClick={() => {
+                            const typeToTab = {
+                              'booking': 'bookings',
+                              'spare-part': 'spare-parts',
+                              'shop': 'profile',
+                              'service': 'bookings'
+                            };
+                            const targetTab = typeToTab[notification.type] || 'overview';
+                            setActiveTab(targetTab);
+                          }}
+                        >
                           <div className="flex items-center space-x-3">
                             <div className={`w-8 h-8 rounded-full flex items-center justify-center ${notification.type === 'booking' ? 'bg-blue-500/20' :
                               notification.type === 'spare-part' ? 'bg-purple-500/20' :
@@ -1254,6 +1449,17 @@ const MechanicDashboard = () => {
                 </div>
 
                 <div>
+                  <label className="text-gray-300 text-sm mb-2 block">Serial Part Number</label>
+                  <input
+                    type="text"
+                    value={newSparePart.serialNumber}
+                    onChange={(e) => setNewSparePart(prev => ({ ...prev, serialNumber: e.target.value }))}
+                    placeholder="Enter serial/part number"
+                    className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  />
+                </div>
+
+                <div>
                   <label className="text-gray-300 text-sm mb-2 block">Car Model *</label>
                   <input
                     type="text"
@@ -1336,6 +1542,22 @@ const MechanicDashboard = () => {
               </div>
 
               <div className="space-y-6">
+                {/* Booking ID Display */}
+                <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-gray-400 text-sm">Booking ID</p>
+                      <p className="text-white font-mono text-lg font-semibold">{formatBookingId(selectedBooking)}</p>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      {getStatusIcon(selectedBooking.status)}
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(selectedBooking.status)}`}>
+                        {selectedBooking.status?.replace('-', ' ').toUpperCase()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <h4 className="text-gray-400 text-sm mb-2">Customer Information</h4>
@@ -1372,7 +1594,9 @@ const MechanicDashboard = () => {
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 pt-4 border-t border-gray-700">
                   <div>
                     <span className="text-gray-400 text-sm">Total Amount:</span>
-                    <span className="text-orange-400 font-bold text-xl ml-2">₹{selectedBooking.amount}</span>
+                    <span className="text-orange-400 font-bold text-lg ml-2">
+                      ₹{selectedBooking.amount}
+                    </span>
                   </div>
 
                   <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
@@ -1400,6 +1624,169 @@ const MechanicDashboard = () => {
                     </button>
                   </div>
                 </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Generate Bill Modal */}
+      <AnimatePresence>
+        {showBillModal && selectedBookingForBill && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-gray-900 rounded-2xl p-6 w-full max-w-2xl border border-gray-700 max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h3 className="text-xl font-bold text-white">Generate Bill</h3>
+                  <p className="text-gray-400 text-sm">Booking ID: {formatBookingId(selectedBookingForBill)}</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowBillModal(false);
+                    setBillItems([{ itemName: '', price: '' }]);
+                    setAdvancePaid(0);
+                    setSelectedBookingForBill(null);
+                  }}
+                  className="text-gray-400 hover:text-white"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              {/* Customer & Vehicle Info */}
+              <div className="bg-gray-800/50 rounded-xl p-4 mb-6 border border-gray-700">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-gray-400 text-sm">Customer</p>
+                    <p className="text-white font-medium">{selectedBookingForBill.customerName}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400 text-sm">Vehicle</p>
+                    <p className="text-white font-medium">{selectedBookingForBill.vehicle?.model}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bill Items */}
+              <div className="space-y-4 mb-6">
+                <div className="flex justify-between items-center">
+                  <h4 className="text-white font-semibold">Bill Items</h4>
+                  <button
+                    onClick={addBillItem}
+                    className="flex items-center space-x-1 text-orange-400 hover:text-orange-300 text-sm"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Add Item</span>
+                  </button>
+                </div>
+
+                {billItems.map((item, index) => (
+                  <div key={index} className="flex space-x-3 items-start">
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        value={item.itemName}
+                        onChange={(e) => updateBillItem(index, 'itemName', e.target.value)}
+                        placeholder="Item name (e.g., Engine Oil Change)"
+                        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      />
+                    </div>
+                    <div className="w-32">
+                      <input
+                        type="number"
+                        value={item.price}
+                        onChange={(e) => updateBillItem(index, 'price', e.target.value)}
+                        placeholder="Price"
+                        min="0"
+                        step="0.01"
+                        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      />
+                    </div>
+                    {billItems.length > 1 && (
+                      <button
+                        onClick={() => removeBillItem(index)}
+                        className="p-3 text-red-400 hover:text-red-300 transition-colors duration-300"
+                      >
+                        <Trash className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Advance Paid Input */}
+              <div className="bg-gray-800/50 rounded-xl p-4 mb-4 border border-gray-700">
+                <div className="flex items-center justify-between">
+                  <label className="text-white font-medium">Advance Paid</label>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-gray-400">₹</span>
+                    <input
+                      type="number"
+                      value={advancePaid}
+                      onChange={(e) => setAdvancePaid(e.target.value)}
+                      placeholder="0"
+                      min="0"
+                      step="0.01"
+                      className="w-32 bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Total Amount & Balance */}
+              <div className="bg-gray-800/50 rounded-xl p-4 mb-6 border border-gray-700 space-y-3">
+                <div className="flex justify-between items-center pb-3 border-b border-gray-700">
+                  <span className="text-gray-300 font-medium">Subtotal</span>
+                  <span className="text-white font-semibold text-lg">
+                    ₹{calculateTotal().toLocaleString()}
+                  </span>
+                </div>
+                {advancePaid > 0 && (
+                  <div className="flex justify-between items-center pb-3 border-b border-gray-700">
+                    <span className="text-gray-300 font-medium">Advance Paid</span>
+                    <span className="text-green-400 font-semibold text-lg">
+                      - ₹{parseFloat(advancePaid).toLocaleString()}
+                    </span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center pt-2">
+                  <span className="text-white font-bold text-lg">Balance to Pay</span>
+                  <span className="text-orange-400 font-bold text-2xl">
+                    ₹{calculateBalance().toLocaleString()}
+                  </span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => {
+                    setShowBillModal(false);
+                    setBillItems([{ itemName: '', price: '' }]);
+                    setAdvancePaid(0);
+                    setSelectedBookingForBill(null);
+                  }}
+                  className="flex-1 border border-gray-600 text-gray-300 hover:text-white hover:border-gray-500 px-4 py-3 rounded-xl transition-colors duration-300"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleGenerateBill}
+                  className="flex-1 bg-green-500 hover:bg-green-600 text-white px-4 py-3 rounded-xl transition-colors duration-300 flex items-center justify-center space-x-2"
+                >
+                  <FileText className="w-4 h-4" />
+                  <span>Generate Bill</span>
+                </button>
               </div>
             </motion.div>
           </motion.div>

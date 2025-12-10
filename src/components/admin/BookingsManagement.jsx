@@ -317,6 +317,27 @@ const BookingsManagement = ({ addNotification }) => {
     }
   };
 
+  // Format booking ID helper function
+  const formatBookingId = (booking) => {
+    if (!booking) return 'N/A';
+    
+    try {
+      // Get vehicle plate number (remove spaces and convert to uppercase)
+      const plateNumber = booking.vehicle?.plateNumber?.replace(/\s+/g, '').toUpperCase() || 'UNKNOWN';
+      
+      // Parse the scheduled date and format as DDMMYYYY
+      const bookingDate = new Date(booking.dateTime);
+      const day = bookingDate.getDate().toString().padStart(2, '0');
+      const month = (bookingDate.getMonth() + 1).toString().padStart(2, '0');
+      const year = bookingDate.getFullYear();
+      
+      return `${plateNumber}${day}${month}${year}`;
+    } catch (error) {
+      console.error('Error formatting booking ID:', error);
+      return booking._id ? booking._id.slice(-6).toUpperCase() : 'N/A';
+    }
+  };
+
   // Get status badge variant
   const getStatusVariant = (status) => {
     switch (status) {
@@ -416,7 +437,7 @@ const BookingsManagement = ({ addNotification }) => {
               {bookings.map((booking) => (
                 <TableRow key={booking._id}>
                   <TableCell className="font-mono">
-                    #{booking._id ? booking._id.slice(-6).toUpperCase() : 'N/A'}
+                    {formatBookingId(booking)}
                   </TableCell>
                   <TableCell>
                     <div>
@@ -580,11 +601,27 @@ const BookingsManagement = ({ addNotification }) => {
         <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
           <DialogHeader className="flex-shrink-0">
             <DialogTitle>Booking Details</DialogTitle>
+            <DialogDescription>
+              Booking ID: <span className="font-mono font-semibold">{formatBookingId(selectedBooking)}</span>
+            </DialogDescription>
           </DialogHeader>
 
           <div className="overflow-y-auto flex-1 pr-2 -mr-2">
             {selectedBooking && (
               <div className="space-y-4 pb-4">
+                {/* Add Booking ID Card */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg">Booking Information</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div>
+                      <Label className="text-sm text-muted-foreground">Booking ID</Label>
+                      <p className="font-mono font-semibold text-lg">{formatBookingId(selectedBooking)}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+
                 {/* Customer Information */}
                 <Card>
                   <CardHeader className="pb-3">

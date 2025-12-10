@@ -19,7 +19,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
 
-import axiosInstance from "../utils/adminaxios";
+import adminaxiosInstance from "../utils/adminaxios";
 // Import Components
 import MechanicsManagement from '../components/admin/MechanicsManagement';
 import BookingsManagement from '../components/admin/BookingsManagement';
@@ -47,7 +47,7 @@ const SuperAdminDashboard = () => {
   const fetchAnalyticsData = async () => {
     try {
       setLoading(true);
-      const { data } = await axiosInstance.get("/admin/dashboard-analytics");
+      const { data } = await adminaxiosInstance.get("/admin/dashboard-analytics");
       if (data.success) {
         setAnalyticsData(data.data);
       }
@@ -60,7 +60,7 @@ const SuperAdminDashboard = () => {
 
   const getmechanics = async () => {
     try {
-      const { data } = await axiosInstance.get("/admin/get-all-mechanics");
+      const { data } = await adminaxiosInstance.get("/admin/get-all-mechanics");
       const res = Array.isArray(data) && data.map((item) => {
         return {
           id: item._id,
@@ -156,7 +156,7 @@ const SuperAdminDashboard = () => {
   const handleLogin = async () => {
     try {
       setLoader(true);
-      const response = await axiosInstance.post("/adminauth/login", {
+      const response = await adminaxiosInstance.post("/adminauth/login", {
         email: email,
         password: password
       });

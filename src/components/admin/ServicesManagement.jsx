@@ -502,21 +502,31 @@ const ServiceForm = ({ service, onChange }) => {
             </div>
             <div className="grid gap-2">
                 <Label htmlFor="category">Category *</Label>
-                <Select
-                    value={service.category || ''}
-                    onValueChange={(value) => onChange('category', value)}
-                >
-                    <SelectTrigger>
-                        <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {categories.map((category) => (
-                            <SelectItem key={category} value={category}>
-                                {category}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+                <div className="space-y-2">
+                    <Select
+                        value={service.category || ''}
+                        onValueChange={(value) => onChange('category', value)}
+                    >
+                        <SelectTrigger>
+                            <SelectValue placeholder="Select category or type custom" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {categories.map((category) => (
+                                <SelectItem key={category} value={category}>
+                                    {category}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <div className="relative">
+                        <Input
+                            id="category"
+                            value={service.category || ''}
+                            onChange={(e) => onChange('category', e.target.value)}
+                            placeholder="Or type custom category"
+                        />
+                    </div>
+                </div>
             </div>
             <div className="flex items-center space-x-2">
                 <Checkbox

@@ -38,6 +38,7 @@ const BookingPage = () => {
   const [selectedTime, setSelectedTime] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
+  const [odometerReading, setOdometerReading] = useState('');
   const [newCar, setNewCar] = useState({
     name: '',
     model: '',
@@ -214,6 +215,7 @@ const BookingPage = () => {
         carId: selectedCar.id,
         services: selectedServices,
         instructions,
+        odometerReading: parseInt(odometerReading),
         dateTime: createValidDate(selectedDate, selectedTime),
         totalPrice
       };
@@ -580,21 +582,45 @@ const BookingPage = () => {
                     className="space-y-6"
                   >
                     <div>
-                      <h2 className="text-2xl font-bold text-white mb-2">Special Instructions</h2>
-                      <p className="text-gray-400">Add any specific notes for the mechanic</p>
+                      <h2 className="text-2xl font-bold text-white mb-2">Special Instructions & Details</h2>
+                      <p className="text-gray-400">Add any specific notes and vehicle details</p>
                     </div>
 
-                    <div className="space-y-4">
-                      <textarea
-                        value={instructions}
-                        onChange={(e) => setInstructions(e.target.value)}
-                        placeholder="E.g., Please check the AC cooling, there's a strange noise from the front left wheel, or any other specific concerns..."
-                        rows={6}
-                        className="w-full px-4 py-3 bg-gray-800/30 border border-gray-700 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
-                      />
-                      <p className="text-gray-400 text-sm">
-                        Your instructions will help the mechanic understand your concerns better and provide more accurate service.
-                      </p>
+                    <div className="space-y-6">
+                      {/* Special Instructions */}
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-white">
+                          Special Instructions (Optional)
+                        </label>
+                        <textarea
+                          value={instructions}
+                          onChange={(e) => setInstructions(e.target.value)}
+                          placeholder="E.g., Please check the AC cooling, there's a strange noise from the front left wheel, or any other specific concerns..."
+                          rows={6}
+                          className="w-full px-4 py-3 bg-gray-800/30 border border-gray-700 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
+                        />
+                        <p className="text-gray-400 text-sm">
+                          Your instructions will help the mechanic understand your concerns better and provide more accurate service.
+                        </p>
+                      </div>
+
+                      {/* Odometer Reading */}
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-white">
+                          Odometer Reading (km) *
+                        </label>
+                        <input
+                          type="number"
+                          value={odometerReading}
+                          onChange={(e) => setOdometerReading(e.target.value)}
+                          placeholder="Enter current odometer reading"
+                          min="0"
+                          className="w-full px-4 py-3 bg-gray-800/30 border border-gray-700 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        />
+                        <p className="text-gray-400 text-sm">
+                          Please provide your current odometer reading for accurate service tracking and maintenance records.
+                        </p>
+                      </div>
                     </div>
                   </motion.div>
                 )}
@@ -728,6 +754,12 @@ const BookingPage = () => {
                               {selectedDate} at {selectedTime}
                             </span>
                           </div>
+                          {odometerReading && (
+                            <div className="flex justify-between">
+                              <span className="text-gray-400">Odometer Reading:</span>
+                              <span className="text-white font-medium">{parseInt(odometerReading).toLocaleString()} km</span>
+                            </div>
+                          )}
                           <div className="flex justify-between">
                             <span className="text-gray-400">Service Center:</span>
                             <span className="text-white font-medium">{mechanic?.name}</span>
@@ -780,6 +812,7 @@ const BookingPage = () => {
                       disabled={
                         (currentStep === 1 && !selectedCar) ||
                         (currentStep === 2 && selectedServices.length === 0) ||
+                        (currentStep === 3 && !odometerReading) ||
                         (currentStep === 4 && (!selectedDate || !selectedTime))
                       }
                       className="flex items-center space-x-2 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-600 text-white px-6 py-3 rounded-xl transition-all duration-300 disabled:cursor-not-allowed"
