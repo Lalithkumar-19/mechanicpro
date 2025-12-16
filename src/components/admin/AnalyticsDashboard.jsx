@@ -299,19 +299,19 @@ const AnalyticsDashboard = () => {
         </Card>
 
         {/* Service Distribution Chart */}
-        <Card>
+        <Card className="overflow-hidden">
           <CardHeader>
             <CardTitle>Service Distribution</CardTitle>
             <CardDescription>Popular services by booking percentage</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="h-80">
+          <CardContent className="max-h-[400px] overflow-y-auto overflow-x-hidden p-4">
+            <div className="h-[600px] min-h-[400px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={charts.serviceDistribution}
                     cx="50%"
-                    cy="50%"
+                    cy="35%"
                     labelLine={false}
                     label={({ name, percentage }) =>
                       `${percentage.toFixed(1)}%`
@@ -328,7 +328,11 @@ const AnalyticsDashboard = () => {
                     ))}
                   </Pie>
                   <Tooltip content={<PieTooltip />} />
-                  <Legend />
+                  <Legend 
+                    wrapperStyle={{ paddingTop: "20px" }}
+                    layout="horizontal"
+                    verticalAlign="bottom"
+                  />
                 </PieChart>
               </ResponsiveContainer>
             </div>
