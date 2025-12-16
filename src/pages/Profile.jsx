@@ -973,10 +973,10 @@ const Profile = () => {
       setBookings(bookingsRes.data);
     } catch (error) {
       console.error('Error fetching profile data:', error);
-      if (error.response?.status === 401) {
-        localStorage.removeItem('userInfo');
-        navigate('/login');
-      }
+      // if (error.response?.status === 401) {
+      //   localStorage.removeItem('userInfo');
+      //   navigate('/login');
+      // }
     } finally {
       setLoading(false);
     }

@@ -76,7 +76,7 @@ const Login = ({ onLoginSuccess }) => {
           phone: formData.phone,
           password: formData.password
         });
-
+        console.log(data);
         // Save user info to localStorage
         localStorage.setItem('user_token', data.token);
         localStorage.setItem('userInfo', JSON.stringify(data));
