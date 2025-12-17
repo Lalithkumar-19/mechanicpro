@@ -252,7 +252,7 @@ const Faq = () => {
                     </p>
                     <button
                         onClick={() => window.open('https://wa.me/919281487865', '_blank')}
-                        className="cursor-pointer group relative px-8 py-4 bg-gradient-to-r from-coral-500 to-coral-600 hover:from-coral-600 hover:to-coral-700 text-white font-semibold rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-coral-500/25 overflow-hidden">
+                        className="cursor-pointer group relative px-8 py-4 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-orange-500/25 overflow-hidden">
                         <span className="relative z-10 flex items-center justify-center space-x-2">
                             <span>Contact Support</span>
                         </span>

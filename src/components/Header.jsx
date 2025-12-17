@@ -11,7 +11,7 @@ const Header = () => {
   const location = useLocation();
 
   const navItems = [
-    { name: "Home", path: "/", isSection: false },
+    { name: "Home", path: "hero", isSection: true },
     { name: "Find mechanics", path: "/find-mechanics", isSection: false },
     { name: "About Us", path: "about-us", isSection: true },
     { name: "Discover Services", path: "services", isSection: true },
@@ -91,7 +91,7 @@ const Header = () => {
         <div className="flex justify-between items-center py-4">
           {/* Logo */}
           <div
-            onClick={() => navigate("/")}
+            onClick={() => handleNavigation({ name: "Home", path: "hero", isSection: true })}
             className="group flex items-center cursor-pointer"
           >
             <img src="/logo.png" alt="Logo" className="w-20 h-16 object-contain" />

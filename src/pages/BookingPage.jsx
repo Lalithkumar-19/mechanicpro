@@ -227,7 +227,7 @@ const BookingPage = () => {
         toast.success('Service booked successfully!');
         setTimeout(() => {
           navigate('/profile');
-        }, 3000);
+        }, 1000);
       }
 
     } catch (error) {

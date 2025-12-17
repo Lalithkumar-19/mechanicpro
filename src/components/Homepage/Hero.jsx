@@ -51,7 +51,7 @@ const Hero = () => {
 
   const navigate = useNavigate();
   return (
-    <div className="relative h-screen flex items-center justify-center overflow-hidden">
+    <div id="hero" className="relative h-screen flex items-center justify-center overflow-hidden">
 
       <div className="absolute bottom-10 z-50 left-1/2 transform -translate-x-1/2">
         <motion.div

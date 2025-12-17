@@ -1,11 +1,24 @@
 import axios from "axios";
 
 const axiosInstance = axios.create({
-    baseURL: "https://mechpro-backend-production.up.railway.app/api",//"https://mechpro-backend.vercel.app/api",//"https://backend.mechanicpro.in/api",
+    baseURL: "https://mechpro-backend-production.up.railway.app/api",
     headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${localStorage.getItem("user_token")}`
+        "Content-Type": "application/json"
     }
 });
+
+// Add a request interceptor to dynamically set the token
+axiosInstance.interceptors.request.use(
+    (config) => {
+        const token = localStorage.getItem("user_token");
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+    },
+    (error) => {
+        return Promise.reject(error);
+    }
+);
 
 export default axiosInstance;

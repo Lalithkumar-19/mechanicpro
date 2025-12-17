@@ -232,7 +232,7 @@ const CarBook = ({ cars, onAddCar, onEditCar, onDeleteCar, loading }) => {
     </div>
   );
 };
-const BookingsManagement = ({ bookings, loading, cars }) => {
+const BookingsManagement = ({ bookings, loading, cars, onRefreshBookings }) => {
   const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedBooking, setSelectedBooking] = useState(null);
@@ -403,11 +403,15 @@ const BookingsManagement = ({ bookings, loading, cars }) => {
 
   const handleCancel = async () => {
     try {
-      const res = await axiosInstance.post(`/bookings/${selectedBooking._id}/cancel`);
+      const res = await axiosInstance.post(`user/bookings/${selectedBooking.id}/cancel`);
 
-      toast.success("Booking deleted successfully");
+      toast.success("Booking cancelled successfully");
       closeModal();
-      getBookings();
+      
+      // Refresh bookings list
+      if (onRefreshBookings) {
+        await onRefreshBookings();
+      }
     } catch (error) {
       console.log(error);
       toast.error("Something went wrong");
@@ -973,12 +977,26 @@ const Profile = () => {
       setBookings(bookingsRes.data);
     } catch (error) {
       console.error('Error fetching profile data:', error);
-      // if (error.response?.status === 401) {
-      //   localStorage.removeItem('userInfo');
-      //   navigate('/login');
-      // }
+      if (error.response?.status === 401) {
+        //localStorage.removeItem('userInfo');
+        navigate('/login');
+      }
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Fetch only bookings
+  const fetchBookings = async () => {
+    try {
+      setBookingsLoading(true);
+      const bookingsRes = await axiosInstance.get('/user/bookings');
+      setBookings(bookingsRes.data);
+    } catch (error) {
+      console.error('Error fetching bookings:', error);
+      toast.error('Failed to refresh bookings');
+    } finally {
+      setBookingsLoading(false);
     }
   };
 
@@ -1293,6 +1311,7 @@ const Profile = () => {
                   bookings={bookings} 
                   loading={bookingsLoading}
                   cars={cars}
+                  onRefreshBookings={fetchBookings}
                 />
               )}
 
