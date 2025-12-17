@@ -5,6 +5,7 @@ import Home from './pages/Home';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import Login from './pages/Login';
+import ForgotPassword from './pages/ForgotPassword';
 import FindMechanic from './pages/FindMechanic';
 import Profile from './pages/Profile';
 import BookingPage from './pages/BookingPage';
@@ -92,6 +93,7 @@ const AppContent = () => {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login onLoginSuccess={requestNotificationPermission} />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path='/find-mechanics' element={<FindMechanic />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/booking/:id" element={<BookingPage />} />
