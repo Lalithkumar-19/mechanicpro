@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const axiosInstance = axios.create({
-    baseURL: "https://mechpro-backend-production.up.railway.app/api",
+    baseURL: "https://mechpro-backend-production-7f3d.up.railway.app/api",
     headers: {
         "Content-Type": "application/json"
     }

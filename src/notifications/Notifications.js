@@ -41,7 +41,7 @@ export const getFcmToken = () =>{ return fcmToken};
 
 export const sendTokenToBackend = async (token, userToken, type) => {
     try {
-        const response = await fetch("https://mechpro-backend-production.up.railway.app/api/fcm-token",{//'https://mechpro-backend.vercel.app/api/fcm-token', {
+        const response = await fetch("https://mechpro-backend-production-7f3d.up.railway.app/api/fcm-token",{//'https://mechpro-backend.vercel.app/api/fcm-token', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
