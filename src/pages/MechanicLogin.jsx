@@ -158,7 +158,7 @@ const MechanicLogin = () => {
                                 <button
                                     type="button"
                                     className="text-sm font-medium text-coral-400 hover:text-coral-300 transition-colors"
-                                    onClick={() => navigate('/forgot-password')}
+                                    onClick={() => navigate('/forgot-password?type=mechanic')}
                                 >
                                     Forgot password?
                                 </button>

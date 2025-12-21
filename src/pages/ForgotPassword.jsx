@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Phone, Lock, ArrowRight, ArrowLeft, Key } from 'lucide-react';
 import { toast } from 'react-toastify';
@@ -15,6 +15,8 @@ const ForgotPassword = () => {
     confirmPassword: ''
   });
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isMechanic = searchParams.get('type') === 'mechanic';
 
   const handleChange = (e) => {
     setFormData({
@@ -35,7 +37,8 @@ const ForgotPassword = () => {
     try {
       setIsLoading(true);
       const { data } = await axiosInstance.post('/auth/forgot-password', {
-        phone: formData.phone
+        phone: formData.phone,
+        type: isMechanic ? 'mechanic' : 'user'
       });
 
       toast.success(data.message);
@@ -61,7 +64,8 @@ const ForgotPassword = () => {
       setIsLoading(true);
       const { data } = await axiosInstance.post('/auth/verify-otp', {
         phone: formData.phone,
-        otp: formData.otp
+        otp: formData.otp,
+        type: isMechanic ? 'mechanic' : 'user'
       });
 
       toast.success(data.message);
@@ -98,12 +102,13 @@ const ForgotPassword = () => {
       const { data } = await axiosInstance.post('/auth/reset-password', {
         phone: formData.phone,
         otp: formData.otp,
+        type: isMechanic ? 'mechanic' : 'user',
         newPassword: formData.newPassword
       });
 
       toast.success(data.message);
       setTimeout(() => {
-        navigate('/login');
+        navigate(isMechanic ? '/mechanic-login' : '/login');
       }, 2000);
     } catch (error) {
       const errorMessage = error.response?.data?.message || 'Failed to reset password';
@@ -117,7 +122,7 @@ const ForgotPassword = () => {
     if (step > 1) {
       setStep(step - 1);
     } else {
-      navigate('/login');
+      navigate(isMechanic ? '/mechanic-login' : '/login');
     }
   };
 
@@ -145,7 +150,7 @@ const ForgotPassword = () => {
             {/* Header */}
             <div className="text-center mb-8">
               <h1 className="text-4xl font-bold text-white mb-4">
-                Reset Password
+                Reset Password {isMechanic && <span className="text-orange-500">(Mechanic)</span>}
               </h1>
               <p className="text-gray-400 text-md">
                 {step === 1 && "Enter your phone number to receive an OTP"}

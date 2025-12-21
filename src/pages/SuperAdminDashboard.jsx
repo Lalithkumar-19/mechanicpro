@@ -32,7 +32,7 @@ import NotificationsPanel from '../components/admin/NotificationsPanel';
 const SuperAdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [notifications, setNotifications] = useState([]);
-  const [isLoggedIn, setIsLoggedIn] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   // Data states
   const [mechanics, setMechanics] = useState([]);
@@ -89,11 +89,16 @@ const SuperAdminDashboard = () => {
     }
   }
 
-  // Sample data initialization
+  // Check authentication on mount
   useEffect(() => {
-    getmechanics();
-    fetchAnalyticsData();
-
+    const token = localStorage.getItem("admin_token");
+    if (token) {
+      setIsLoggedIn(true);
+      getmechanics();
+      fetchAnalyticsData();
+    } else {
+      setIsLoggedIn(false);
+    }
   }, []);
 
   // Authentication
