@@ -18,6 +18,8 @@ import {
 } from 'lucide-react';
 import axiosInstance from '../utils/axiosinstance';
 import { uploadToImgBB } from '../utils/uploadtoImbb';
+import { socket } from '../utils/socketServer';
+import { onForegroundMessage } from '../firebase';
 
 // Car Book CRUD Component
 const CarBook = ({ cars, onAddCar, onEditCar, onDeleteCar, loading }) => {
@@ -232,7 +234,7 @@ const CarBook = ({ cars, onAddCar, onEditCar, onDeleteCar, loading }) => {
     </div>
   );
 };
-const BookingsManagement = ({ bookings, loading, cars, onRefreshBookings }) => {
+const BookingsManagement = ({ bookings, loading, cars, onRefreshBookings, updatedBookingIds = [] }) => {
   const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedBooking, setSelectedBooking] = useState(null);
@@ -240,6 +242,11 @@ const BookingsManagement = ({ bookings, loading, cars, onRefreshBookings }) => {
   const [showBillModal, setShowBillModal] = useState(false);
   const [billData, setBillData] = useState(null);
   const [loadingBill, setLoadingBill] = useState(false);
+
+  // Check if a booking was recently updated
+  const isRecentlyUpdated = (bookingId) => {
+    return updatedBookingIds.includes(bookingId);
+  };
 
   // Format booking ID to vehicle registration + date format
   const formatBookingId = (booking) => {
@@ -403,7 +410,7 @@ const BookingsManagement = ({ bookings, loading, cars, onRefreshBookings }) => {
 
   const handleCancel = async () => {
     try {
-      const res = await axiosInstance.post(`user/bookings/${selectedBooking.id}/cancel`);
+      await axiosInstance.post(`user/bookings/${selectedBooking.id}/cancel`);
 
       toast.success("Booking cancelled successfully");
       closeModal();
@@ -478,9 +485,32 @@ const BookingsManagement = ({ bookings, loading, cars, onRefreshBookings }) => {
           <motion.div
             key={booking.id}
             initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-gray-800/50 rounded-2xl p-6 border border-gray-700 hover:border-orange-500/40 transition-all duration-300"
+            animate={{ 
+              opacity: 1, 
+              y: 0,
+              scale: isRecentlyUpdated(booking.id || booking._id) ? [1, 1.02, 1] : 1
+            }}
+            transition={{
+              scale: {
+                duration: 0.5,
+                repeat: isRecentlyUpdated(booking.id || booking._id) ? 3 : 0,
+                repeatType: "reverse"
+              }
+            }}
+            className={`bg-gray-800/50 rounded-2xl p-6 border transition-all duration-300 ${
+              isRecentlyUpdated(booking.id || booking._id) 
+                ? 'border-orange-500 shadow-lg shadow-orange-500/20' 
+                : 'border-gray-700 hover:border-orange-500/40'
+            }`}
           >
+            {/* Show "Updated" badge for recently updated bookings */}
+            {isRecentlyUpdated(booking.id || booking._id) && (
+              <div className="mb-3 flex items-center space-x-2">
+                <div className="bg-orange-500 text-white text-xs px-3 py-1 rounded-full font-semibold animate-pulse">
+                  ✨ Just Updated
+                </div>
+              </div>
+            )}
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
               {/* Booking Info */}
               <div className="flex-1">
@@ -936,6 +966,7 @@ const Profile = () => {
   const [bookingsLoading, setBookingsLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [updatedBookingIds, setUpdatedBookingIds] = useState([]);
 
   const [profileData, setProfileData] = useState({
     name: '',
@@ -955,6 +986,130 @@ const Profile = () => {
       return;
     }
     fetchProfileData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Socket.io real-time updates for booking status
+  useEffect(() => {
+    const userInfo = localStorage.getItem('userInfo');
+    if (!userInfo) return;
+
+    const userId = JSON.parse(userInfo)._id;
+
+    // Register user with socket
+    socket.emit("register_user", userId);
+    console.log(`✅ User ${userId} registered with socket`);
+
+    // Listen for booking updates
+    const handleBookingUpdate = (data) => {
+      console.log('📨 Booking update received:', data);
+      
+      // Show toast notification
+      const statusMessages = {
+        'accepted': '✅ Mechanic accepted your booking!',
+        'in-progress': '🔧 Your service is now in progress!',
+        'completed': '✅ Your service has been completed!',
+        'cancelled': '❌ Booking has been cancelled',
+        'rejected': '❌ Booking was rejected'
+      };
+
+      if (statusMessages[data.status]) {
+        toast.info(statusMessages[data.status], {
+          position: "top-right",
+          autoClose: 5000,
+        });
+
+        // Play notification sound
+        try {
+          const audio = new Audio('/sounds/notification1.mp3');
+          audio.play().catch(e => console.log('Audio play failed:', e));
+        } catch (error) {
+          console.log('Sound error:', error);
+        }
+      }
+
+      // Update the booking in the list
+      setBookings(prevBookings => 
+        prevBookings.map(booking => 
+          booking.id === data.bookingId || booking._id === data.bookingId
+            ? { ...booking, status: data.status, ...data.updatedData }
+            : booking
+        )
+      );
+
+      // Add to updated bookings list with visual feedback
+      const bookingId = data.bookingId;
+      setUpdatedBookingIds(prev => {
+        if (!prev.includes(bookingId)) {
+          return [...prev, bookingId];
+        }
+        return prev;
+      });
+
+      // Remove from updated list after 10 seconds
+      setTimeout(() => {
+        setUpdatedBookingIds(prev => prev.filter(id => id !== bookingId));
+      }, 10000);
+    };
+
+    // Listen for general notifications
+    const handleNotification = (data) => {
+      console.log('🔔 Notification received:', data);
+      
+      if (data.message) {
+        toast.info(data.message, {
+          position: "top-right",
+          autoClose: 5000,
+        });
+
+        // Play notification sound
+        try {
+          const audio = new Audio('/sounds/notification1.mp3');
+          audio.play().catch(e => console.log('Audio play failed:', e));
+        } catch (error) {
+          console.log('Sound error:', error);
+        }
+      }
+
+      // If notification contains booking update, refresh bookings
+      if (data.bookingId) {
+        fetchBookings();
+      }
+    };
+
+    // Attach socket listeners
+    socket.on("booking_update", handleBookingUpdate);
+    socket.on("notification", handleNotification);
+
+    // Cleanup on unmount
+    return () => {
+      socket.off("booking_update", handleBookingUpdate);
+      socket.off("notification", handleNotification);
+    };
+  }, []);
+
+  // Firebase FCM foreground message handler
+  useEffect(() => {
+    const unsubscribe = onForegroundMessage((payload) => {
+      console.log('📨 FCM Foreground message:', payload);
+      
+      // Show toast for FCM notifications
+      if (payload.notification) {
+        toast.info(payload.notification.body || payload.notification.title, {
+          position: "top-right",
+          autoClose: 5000,
+        });
+      }
+
+      // If FCM contains booking update, refresh bookings
+      if (payload.data?.bookingId) {
+        fetchBookings();
+      }
+    });
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, []);
 
   // Fetch all profile data
@@ -1312,6 +1467,7 @@ const Profile = () => {
                   loading={bookingsLoading}
                   cars={cars}
                   onRefreshBookings={fetchBookings}
+                  updatedBookingIds={updatedBookingIds}
                 />
               )}
 

@@ -55,6 +55,7 @@ const MechanicDashboard = () => {
 
   const [sparePartSearch, setSparePartSearch] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [newBookingIds, setNewBookingIds] = useState([]); // Track new bookings for visual feedback
   const [revenueStats, setRevenueStats] = useState({
     totalRevenue: 0,
     monthlyRevenue: 0,
@@ -62,24 +63,37 @@ const MechanicDashboard = () => {
   });
   const itemsPerPage = 10;
 
+  // Get mechanic info from localStorage with error handling
+  let mechanicInfo = {};
+  try {
+    const stored = localStorage.getItem('mechanic_info');
+    if (stored) {
+      mechanicInfo = JSON.parse(stored);
+    }
+  } catch (error) {
+    console.error('Error parsing mechanic_info from localStorage:', error);
+    mechanicInfo = {};
+  }
+
   // Check authentication on component mount
   useEffect(() => {
     const token = localStorage.getItem('mechanic_token');
-    const mechanicInfo = localStorage.getItem('mechanic_info');
+    const storedMechanicInfo = localStorage.getItem('mechanic_info');
 
-    if (!token || !mechanicInfo) {
+    if (!token || !storedMechanicInfo) {
       navigate('/mechanic-login');
       return;
     }
 
     fetchDashboardData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Fetch all data from backend
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const [profileRes, statsRes, bookingsRes, sparePartsRes] = await Promise.all([
+      const [profileRes, , bookingsRes, sparePartsRes] = await Promise.all([
         mechanicaxiosInstance.get('/profile'),
         mechanicaxiosInstance.get('/dashboard-stats'),
         mechanicaxiosInstance.get('/bookings?page=1&limit=100'),
@@ -206,14 +220,6 @@ const MechanicDashboard = () => {
         )
       );
 
-      const statusMessages = {
-        'pending': 'Booking set to pending',
-        'confirmed': 'Booking confirmed',
-        'in-progress': 'Service started',
-        'completed': 'Service completed',
-        'cancelled': 'Booking cancelled'
-      };
-
       // toast.success(statusMessages[newStatus] || 'Status updated');
     } catch (error) {
       console.error('Error updating booking status:', error);
@@ -275,7 +281,7 @@ const MechanicDashboard = () => {
     try {
       const res = await mechanicaxiosInstance.get('/bookings?page=1&limit=100');
       if (res.status === 200) {
-        setBookings(res.data);
+        setBookings(res.data.bookings || res.data || []);
       }
     } catch (error) {
       console.error('Error loading bookings:', error);
@@ -301,9 +307,9 @@ const MechanicDashboard = () => {
       if (response.status === 200) {
         setEditingProfile(false);
         toast.success('Profile updated successfully');
-        const mechanicInfo = JSON.parse(localStorage.getItem('mechanic_info'));
-        mechanicInfo.name = profileData.name;
-        localStorage.setItem('mechanic_info', JSON.stringify(mechanicInfo));
+        const storedMechanicInfo = JSON.parse(localStorage.getItem('mechanic_info') || '{}');
+        storedMechanicInfo.name = profileData.shopName;
+        localStorage.setItem('mechanic_info', JSON.stringify(storedMechanicInfo));
       }
       // Update localStorage with new name
 
@@ -410,7 +416,6 @@ const MechanicDashboard = () => {
       default: return <Clock className="w-4 h-4" />;
     }
   };
-  const mechanicInfo = JSON.parse(localStorage.getItem('mechanic_info') || '{}');
 
   // Handle tab change for mobile
   const handleTabChange = (tabId) => {
@@ -486,45 +491,94 @@ const MechanicDashboard = () => {
   };
 
   useEffect(() => {
+    if (!mechanicInfo || !mechanicInfo.id) {
+      console.log('Mechanic info not available for socket registration');
+      return;
+    }
 
     if ('Notification' in window) {
       Notification.requestPermission();
     }
+    
     const playNotificationSound = () => {
-      const audio = new Audio('/sounds/notification1.mp3'); // Add your sound file
-      audio.volume = 0.6; // Set volume (0.0 to 1.0)
+      const audio = new Audio('/sounds/notification1.mp3');
+      audio.volume = 0.6;
       audio.play().catch(error => {
         console.log('Audio play failed:', error);
       });
     };
 
     const handleNotification = (data) => {
+      console.log('📨 Notification received:', data);
 
       // Play notification sound
       playNotificationSound();
 
-      // Show toast notification
-      toast.success(`You got a new booking from a user.  Please accept/decline `);
-      setTimeout(() => {
-        LoadBookings();
-      }, 2000);
+      // Show toast notification with customer name if available
+      const message = data.customerName 
+        ? `🎉 New booking from ${data.customerName}! Please accept/decline.`
+        : 'You got a new booking from a user. Please accept/decline.';
+      
+      toast.success(message);
 
-    }
+      // Add to new bookings list for visual feedback
+      if (data.bookingId || data.id) {
+        const bookingId = data.bookingId || data.id;
+        setNewBookingIds(prev => {
+          if (!prev.includes(bookingId)) {
+            return [...prev, bookingId];
+          }
+          return prev;
+        });
 
-    socket.on("connect", () => {
+        // Remove from new list after 15 seconds
+        setTimeout(() => {
+          setNewBookingIds(prev => prev.filter(id => id !== bookingId));
+        }, 15000);
+      }
+
+      // Reload bookings to get the new one immediately
+      LoadBookings();
+    };
+
+    // Register mechanic when socket connects
+    const handleSocketConnect = () => {
+      console.log('🔌 Socket connected, registering mechanic:', mechanicInfo.id);
       socket.emit("register_mechanic", mechanicInfo.id);
-    });
+    };
 
+    const handleSocketDisconnect = () => {
+      console.log('🔌 Socket disconnected');
+    };
+
+    const handleSocketError = (error) => {
+      console.error('❌ Socket error:', error);
+    };
+
+    // Set up socket listeners
+    socket.on("connect", handleSocketConnect);
+    socket.on("disconnect", handleSocketDisconnect);
+    socket.on("error", handleSocketError);
     socket.on("notification", handleNotification);
-
+    socket.on("new_booking", handleNotification);
     socket.on("booking_update", handleNotification);
+
+    // If already connected, register immediately
+    if (socket.connected) {
+      handleSocketConnect();
+    }
 
     // Cleanup
     return () => {
+      socket.off("connect", handleSocketConnect);
+      socket.off("disconnect", handleSocketDisconnect);
+      socket.off("error", handleSocketError);
       socket.off("notification", handleNotification);
+      socket.off("new_booking", handleNotification);
       socket.off("booking_update", handleNotification);
     };
-  }, [mechanicInfo.id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Format booking ID helper function
   const formatBookingId = (booking) => {
@@ -899,9 +953,39 @@ const MechanicDashboard = () => {
 
                   <div className="space-y-4 overflow-x-scroll">
                     {paginatedBookings.length > 0 ? (
-                      paginatedBookings.map((booking) => (
-                        <div key={booking.id} className="bg-gray-800 rounded-2xl p-6 border border-gray-700 hover:border-orange-500/40 transition-all duration-300">
-                          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
+                      paginatedBookings.map((booking) => {
+                        const isNewBooking = newBookingIds.includes(booking.id || booking._id);
+                        return (
+                          <motion.div
+                            key={booking.id}
+                            className={`bg-gray-800 rounded-2xl p-6 border transition-all duration-300 relative ${
+                              isNewBooking 
+                                ? 'border-orange-500 shadow-lg shadow-orange-500/30' 
+                                : 'border-gray-700 hover:border-orange-500/40'
+                            }`}
+                            animate={isNewBooking ? {
+                              scale: [1, 1.01, 1],
+                              boxShadow: [
+                                '0 0 20px rgba(249, 115, 22, 0.3)',
+                                '0 0 30px rgba(249, 115, 22, 0.5)',
+                                '0 0 20px rgba(249, 115, 22, 0.3)'
+                              ]
+                            } : {}}
+                            transition={{
+                              duration: 2,
+                              repeat: isNewBooking ? Infinity : 0
+                            }}
+                          >
+                            {/* New Booking Badge */}
+                            {isNewBooking && (
+                              <div className="absolute -top-2 -right-2 z-10">
+                                <span className="bg-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg animate-pulse">
+                                  🎉 NEW!
+                                </span>
+                              </div>
+                            )}
+                            
+                            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
                             {/* Booking Info */}
                             <div className="flex-1">
                               <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 mb-4">
@@ -995,8 +1079,9 @@ const MechanicDashboard = () => {
                               </div>
                             </div>
                           </div>
-                        </div>
-                      ))
+                        </motion.div>
+                      );
+                      })
                     ) : (
                       <div className="text-center py-12 text-gray-400">
                         <Calendar className="w-16 h-16 mx-auto mb-4 opacity-50" />

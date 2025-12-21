@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
+import { toast } from 'react-toastify';
 import {
   Wrench, Calendar, Clock, CheckCircle, XCircle,
   Settings, User, Bell, Package, BarChart3, MessageCircle,
@@ -20,6 +21,8 @@ import {
 } from 'recharts';
 
 import adminaxiosInstance from "../utils/adminaxios";
+import { socket } from '../utils/socketServer';
+import { onForegroundMessage } from '../firebase';
 // Import Components
 import MechanicsManagement from '../components/admin/MechanicsManagement';
 import BookingsManagement from '../components/admin/BookingsManagement';
@@ -33,6 +36,7 @@ const SuperAdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [notifications, setNotifications] = useState([]);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [newBookingIds, setNewBookingIds] = useState([]); // Track new bookings
 
   // Data states
   const [mechanics, setMechanics] = useState([]);
@@ -41,7 +45,7 @@ const SuperAdminDashboard = () => {
   const [customers, setCustomers] = useState([]);
   const [services, setServices] = useState([]);
   const [analyticsData, setAnalyticsData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
 
   // Fetch analytics data
   const fetchAnalyticsData = async () => {
@@ -100,6 +104,111 @@ const SuperAdminDashboard = () => {
       setIsLoggedIn(false);
     }
   }, []);
+
+  // Socket.IO real-time updates for new bookings (Admin)
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    const adminId = localStorage.getItem("admin_id");
+    if (!adminId) return;
+
+    // Register admin with socket (using a special admin channel)
+    socket.emit("register_admin", adminId);
+    console.log(`✅ Admin ${adminId} registered with socket`);
+
+    // Listen for new booking notifications
+    const handleNewBooking = (data) => {
+      console.log('📨 New booking notification received:', data);
+      
+      // Show toast notification
+      toast.success(`🎉 New booking received from ${data.customerName || 'a customer'}!`, {
+        position: "top-right",
+        autoClose: 5000,
+      });
+
+      // Play notification sound
+      try {
+        const audio = new Audio('/sounds/notification1.mp3');
+        audio.play().catch(e => console.log('Audio play failed:', e));
+      } catch (error) {
+        console.log('Sound error:', error);
+      }
+
+      // Add to new bookings list for visual feedback
+      if (data.bookingId) {
+        setNewBookingIds(prev => {
+          if (!prev.includes(data.bookingId)) {
+            return [...prev, data.bookingId];
+          }
+          return prev;
+        });
+
+        // Remove from new list after 15 seconds
+        setTimeout(() => {
+          setNewBookingIds(prev => prev.filter(id => id !== data.bookingId));
+        }, 15000);
+      }
+
+      // Refresh analytics and bookings
+      fetchAnalyticsData();
+      
+      // Add notification to the list
+      addNotification(`New booking from ${data.customerName || 'customer'}`, 'booking');
+    };
+
+    // Listen for general notifications
+    const handleNotification = (data) => {
+      console.log('🔔 Notification received:', data);
+      
+      if (data.message) {
+        toast.info(data.message, {
+          position: "top-right",
+          autoClose: 5000,
+        });
+      }
+
+      // Refresh data if needed
+      if (data.type === 'new_booking') {
+        fetchAnalyticsData();
+      }
+    };
+
+    // Attach socket listeners
+    socket.on("new_booking", handleNewBooking);
+    socket.on("notification", handleNotification);
+
+    // Cleanup on unmount
+    return () => {
+      socket.off("new_booking", handleNewBooking);
+      socket.off("notification", handleNotification);
+    };
+  }, [isLoggedIn]);
+
+  // Firebase FCM foreground message handler for admin
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    const unsubscribe = onForegroundMessage((payload) => {
+      console.log('📨 FCM Foreground message (Admin):', payload);
+      
+      // Show toast for FCM notifications
+      if (payload.notification) {
+        toast.info(payload.notification.body || payload.notification.title, {
+          position: "top-right",
+          autoClose: 5000,
+        });
+      }
+
+      // Refresh data if needed
+      if (payload.data?.type === 'new_booking') {
+        fetchAnalyticsData();
+      }
+    });
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [isLoggedIn]);
 
   // Authentication
   const handleLogout = () => {
@@ -240,7 +349,13 @@ const SuperAdminDashboard = () => {
       case 'mechanics':
         return <MechanicsManagement mechanics={mechanics} setMechanics={setMechanics} addNotification={addNotification} />;
       case 'bookings':
-        return <BookingsManagement bookings={bookings} setBookings={setBookings} mechanics={mechanics} addNotification={addNotification} />;
+        return <BookingsManagement 
+          bookings={bookings} 
+          setBookings={setBookings} 
+          mechanics={mechanics} 
+          addNotification={addNotification} 
+          newBookingIds={newBookingIds}
+        />;
       case 'spare-parts':
         return <SparePartsManagement spareParts={sparePartRequests} setSpareParts={setSparePartRequests} addNotification={addNotification} />;
       case 'customers':
@@ -365,7 +480,7 @@ const SuperAdminDashboard = () => {
 };
 
 // Overview Tab Component with shadcn/ui
-const OverviewTab = ({ stats, mechanics, bookings, notifications, analyticsData, loading }) => {
+const OverviewTab = ({ stats, bookings, notifications, analyticsData, loading }) => {
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
   // Custom tooltip for charts
@@ -560,7 +675,7 @@ const OverviewTab = ({ stats, mechanics, bookings, notifications, analyticsData,
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, percentage }) =>
+                  label={({ percentage }) =>
                     `${percentage?.toFixed(1) || '0'}%`
                   }
                   outerRadius={80}

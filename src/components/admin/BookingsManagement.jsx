@@ -49,8 +49,9 @@ import {
   Wrench,
 } from 'lucide-react';
 import axiosInstance from '../../utils/adminaxios';
+import { socket } from '../../utils/socketServer';
 
-const BookingsManagement = ({ addNotification }) => {
+const BookingsManagement = ({ addNotification, newBookingIds = [] }) => {
   const [bookings, setBookings] = useState([]);
   const [mechanics, setMechanics] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -136,6 +137,27 @@ const BookingsManagement = ({ addNotification }) => {
   useEffect(() => {
     fetchBookings();
     fetchMechanics();
+  }, []);
+
+  // Socket.IO real-time updates for new bookings
+  useEffect(() => {
+    const adminId = localStorage.getItem('admin_id');
+    if (!adminId) return;
+
+    // Listen for new booking events
+    const handleNewBooking = (data) => {
+      console.log('📨 BookingsManagement: New booking received:', data);
+      
+      // Refresh bookings list
+      fetchBookings();
+    };
+
+    socket.on('new_booking', handleNewBooking);
+
+    // Cleanup
+    return () => {
+      socket.off('new_booking', handleNewBooking);
+    };
   }, []);
 
   const showToast = (message, type = 'default') => {
@@ -434,11 +456,23 @@ const BookingsManagement = ({ addNotification }) => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {bookings.map((booking) => (
-                <TableRow key={booking._id}>
-                  <TableCell className="font-mono">
-                    {formatBookingId(booking)}
-                  </TableCell>
+              {bookings.map((booking) => {
+                const isNewBooking = newBookingIds.includes(booking._id);
+                return (
+                  <TableRow 
+                    key={booking._id}
+                    className={isNewBooking ? 'bg-orange-50 dark:bg-orange-950/20 animate-pulse' : ''}
+                  >
+                    <TableCell className="font-mono">
+                      <div className="flex items-center gap-2">
+                        {formatBookingId(booking)}
+                        {isNewBooking && (
+                          <Badge variant="default" className="bg-orange-500 text-white text-xs">
+                            NEW
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
                   <TableCell>
                     <div>
                       <div className="font-medium">
@@ -577,7 +611,8 @@ const BookingsManagement = ({ addNotification }) => {
                     </DropdownMenu>
                   </TableCell>
                 </TableRow>
-              ))}
+              );
+              })}
             </TableBody>
           </Table>
 

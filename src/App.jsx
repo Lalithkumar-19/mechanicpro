@@ -12,7 +12,7 @@ import BookingPage from './pages/BookingPage';
 import MechanicDashboard from './pages/MechanicDashboard';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import MechanicLogin from './pages/MechanicLogin';
-import { ToastContainer, toast } from 'react-toastify';
+import { ToastContainer } from 'react-toastify';
 import { getFcmToken, requestNotificationPermission, sendTokenToBackend, setupFCM } from './notifications/Notifications';
 
 // Wrapper component to access useLocation
