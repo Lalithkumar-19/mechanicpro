@@ -6,6 +6,7 @@ import Testimonials from '../components/Homepage/Testimonials'
 import OurServices from '../components/Homepage/OurServices'
 import Faq from '../components/Homepage/Faq'
 import AboutUs from '../components/Homepage/AboutUs'
+import ImageCarousel from '../components/Homepage/ImageCarousel'
 import { motion } from "framer-motion"
 const Home = () => {
   return (
@@ -40,6 +41,7 @@ const Home = () => {
       </motion.div>
       <Hero />
       <WhyUs />
+      <ImageCarousel />
       <AboutUs />
       <HowItWorks />
       <Testimonials />

@@ -20,6 +20,8 @@ import axiosInstance from '../utils/axiosinstance';
 import { uploadToImgBB } from '../utils/uploadtoImbb';
 import { socket } from '../utils/socketServer';
 import { onForegroundMessage } from '../firebase';
+import ServiceTimeline from '../components/Profile/ServiceTimeline';
+import InspectionView from '../components/User/InspectionView';
 
 // Car Book CRUD Component
 const CarBook = ({ cars, onAddCar, onEditCar, onDeleteCar, loading }) => {
@@ -363,12 +365,22 @@ const BookingsManagement = ({ bookings, loading, cars, onRefreshBookings, update
 
   console.log(bookings, "bookings pf");
 
+  // Helper functions
+
   const getStatusIcon = (status) => {
     switch (status) {
       case 'pending':
         return <Clock4 className="w-4 h-4 text-amber-400" />;
       case 'confirmed':
         return <CheckCircle className="w-4 h-4 text-green-400" />;
+      case 'vehicle_received':
+        return <MapPinIcon className="w-4 h-4 text-blue-400" />;
+      case 'inspection_completed':
+        return <FileText className="w-4 h-4 text-purple-400" />;
+      case 'user_approved':
+        return <CheckCircle className="w-4 h-4 text-green-400" />;
+      case 'user_rejected':
+        return <XCircle className="w-4 h-4 text-red-400" />;
       case 'in-progress':
         return <Wrench className="w-4 h-4 text-blue-400" />;
       case 'completed':
@@ -386,6 +398,14 @@ const BookingsManagement = ({ bookings, loading, cars, onRefreshBookings, update
         return 'bg-amber-500/20 text-amber-400 border-amber-500/30';
       case 'confirmed':
         return 'bg-green-500/20 text-green-400 border-green-500/30';
+      case 'vehicle_received':
+        return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+      case 'inspection_completed':
+        return 'bg-purple-500/20 text-purple-400 border-purple-500/30';
+      case 'user_approved':
+        return 'bg-green-500/20 text-green-400 border-green-500/30';
+      case 'user_rejected':
+        return 'bg-red-500/20 text-red-400 border-red-500/30';
       case 'in-progress':
         return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
       case 'completed':
@@ -760,7 +780,20 @@ const BookingsManagement = ({ bookings, loading, cars, onRefreshBookings, update
               )}
             </div>
 
-            {/* Modal Footer */}
+              {/* Inspection Report Section */}
+              {['inspection_completed', 'user_approved', 'user_rejected', 'in-progress', 'completed'].includes(selectedBooking.status) && (
+                 <div className="pt-6 border-t border-gray-700">
+                    <InspectionView 
+                      bookingId={selectedBooking.id || selectedBooking._id} 
+                      onDecisionMade={() => {
+                        if(onRefreshBookings) onRefreshBookings();
+                        closeModal();
+                      }} 
+                    />
+                 </div>
+              )}
+
+             {/* Modal Footer */}
             <div className="flex flex-col sm:flex-row justify-between items-center gap-3 p-6 border-t border-gray-700">
               {/* Get Directions Button - Left Aligned */}
               <button
@@ -1229,7 +1262,7 @@ const Profile = () => {
       console.error('Error deleting car:', error);
       alert('Error deleting car');
     } finally {
-      setCarsLoading(false);
+        setCarsLoading(false);
     }
   };
 
@@ -1237,6 +1270,7 @@ const Profile = () => {
     { id: 'profile', label: 'Profile', icon: User },
     { id: 'cars', label: 'My Cars', icon: Car },
     { id: 'bookings', label: 'Bookings', icon: Calendar },
+    { id: 'history', label: 'Service History', icon: Clock4 },
     { id: 'notifications', label: 'Notifications', icon: Bell }
   ];
 
@@ -1469,6 +1503,11 @@ const Profile = () => {
                   onRefreshBookings={fetchBookings}
                   updatedBookingIds={updatedBookingIds}
                 />
+              )}
+
+              {/* History Tab */}
+              {activeTab === 'history' && (
+                <ServiceTimeline />
               )}
 
               {/* Notifications Tab */}

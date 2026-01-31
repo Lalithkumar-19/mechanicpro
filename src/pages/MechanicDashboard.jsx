@@ -13,7 +13,10 @@ import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import mechanicaxiosInstance from '../utils/mechanicaxios';
 import { uploadToImgBB } from '../utils/uploadtoImbb';
+import NotificationSound from '/sounds/notification1.mp3'; // Example check, or just remove line 16
 import { socket } from '../utils/socketServer';
+import InspectionForm from '../components/Mechanic/InspectionForm';
+import InspectionView from '../components/User/InspectionView';
 
 const MechanicDashboard = () => {
   const navigate = useNavigate();
@@ -55,7 +58,13 @@ const MechanicDashboard = () => {
 
   const [sparePartSearch, setSparePartSearch] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   const [newBookingIds, setNewBookingIds] = useState([]); // Track new bookings for visual feedback
+  
+  // Inspection Modals State
+  const [showInspectionForm, setShowInspectionForm] = useState(false);
+  const [showInspectionView, setShowInspectionView] = useState(false);
+  const [inspectionBooking, setInspectionBooking] = useState(null);
   const [revenueStats, setRevenueStats] = useState({
     totalRevenue: 0,
     monthlyRevenue: 0,
@@ -271,6 +280,13 @@ const MechanicDashboard = () => {
     }
   };
   console.log("sparepart", sparePartRequests)
+  const handleInspectionSubmitted = () => {
+    setShowInspectionForm(false);
+    setInspectionBooking(null);
+    LoadBookings();
+    toast.success('Inspection Report Submitted');
+  };
+
   // Profile edit functionality
   const handleProfileEdit = () => {
     setEditingProfile(true);
@@ -399,6 +415,10 @@ const MechanicDashboard = () => {
     switch (status) {
       case 'pending': return 'bg-amber-500/20 text-amber-400 border-amber-500/30';
       case 'confirmed': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+      case 'vehicle_received': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+      case 'inspection_completed': return 'bg-purple-500/20 text-purple-400 border-purple-500/30';
+      case 'user_approved': return 'bg-green-500/20 text-green-400 border-green-500/30';
+      case 'user_rejected': return 'bg-red-500/20 text-red-400 border-red-500/30';
       case 'in-progress': return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
       case 'completed': return 'bg-green-500/20 text-green-400 border-green-500/30';
       case 'cancelled': return 'bg-red-500/20 text-red-400 border-red-500/30';
@@ -410,6 +430,10 @@ const MechanicDashboard = () => {
     switch (status) {
       case 'pending': return <Clock className="w-4 h-4" />;
       case 'confirmed': return <CheckCircle className="w-4 h-4" />;
+      case 'vehicle_received': return <MapPin className="w-4 h-4" />;
+      case 'inspection_completed': return <FileText className="w-4 h-4" />;
+      case 'user_approved': return <CheckCircle className="w-4 h-4" />;
+      case 'user_rejected': return <XCircle className="w-4 h-4" />;
       case 'in-progress': return <Wrench className="w-4 h-4" />;
       case 'completed': return <CheckCircle className="w-4 h-4" />;
       case 'cancelled': return <XCircle className="w-4 h-4" />;
@@ -1026,17 +1050,19 @@ const MechanicDashboard = () => {
                             <div className="flex flex-col space-y-2">
                               <div className="flex flex-col sm:flex-row sm:space-x-2 space-y-2 sm:space-y-0">
                                 {/* Status Update Dropdown */}
-                                <select
-                                  value={booking.status}
-                                  onChange={(e) => updateBookingStatus(booking.id, e.target.value)}
-                                  className="bg-gray-700 border border-gray-600 text-white px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
-                                >
-                                  <option value="pending">Pending</option>
-                                  <option value="confirmed">Confirmed</option>
-                                  <option value="in-progress">In Progress</option>
-                                  <option value="completed">Completed</option>
-                                  <option value="cancelled">Cancelled</option>
-                                </select>
+                                  <select
+                                    value={booking.status}
+                                    onChange={(e) => updateBookingStatus(booking.id, e.target.value)}
+                                    className="bg-gray-700 border border-gray-600 text-white px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                  >
+                                    <option value="pending">Pending</option>
+                                    <option value="confirmed">Confirmed</option>
+                                    <option value="vehicle_received">Vehicle Received</option>
+                                    {/* Inspection Completed is set automatically */}
+                                    <option value="in-progress" disabled={booking.status !== 'user_approved' && booking.status !== 'in-progress'}>In Progress</option>
+                                    <option value="completed">Completed</option>
+                                    <option value="cancelled">Cancelled</option>
+                                  </select>
 
                                 <button
                                   onClick={() => setSelectedBooking(booking)}
@@ -1045,6 +1071,32 @@ const MechanicDashboard = () => {
                                   <Eye className="w-4 h-4" />
                                   <span>Details</span>
                                 </button>
+                                
+                                {booking.status === 'vehicle_received' && (
+                                  <button
+                                    onClick={() => {
+                                      setInspectionBooking(booking);
+                                      setShowInspectionForm(true);
+                                    }}
+                                    className="flex items-center justify-center space-x-1 bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg transition-colors duration-300 text-sm font-medium"
+                                  >
+                                    <FileText className="w-4 h-4" />
+                                    <span>Start Inspection</span>
+                                  </button>
+                                )}
+
+                                {['inspection_completed', 'user_approved', 'user_rejected', 'in-progress', 'completed'].includes(booking.status) && (
+                                  <button
+                                    onClick={() => {
+                                      setInspectionBooking(booking);
+                                      setShowInspectionView(true);
+                                    }}
+                                    className="flex items-center justify-center space-x-1 border border-purple-500 text-purple-400 hover:bg-purple-500 hover:text-white px-3 py-2 rounded-lg transition-colors duration-300 text-sm font-medium"
+                                  >
+                                    <FileText className="w-4 h-4" />
+                                    <span>View Report</span>
+                                  </button>
+                                )}
                               </div>
 
                               <div className="flex space-x-2">
@@ -1873,6 +1925,67 @@ const MechanicDashboard = () => {
                   <span>Generate Bill</span>
                 </button>
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    {/* Inspection Form Modal */}
+      <AnimatePresence>
+        {showInspectionForm && inspectionBooking && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+            >
+              <InspectionForm
+                bookingId={inspectionBooking.id || inspectionBooking._id}
+                onReportSubmitted={handleInspectionSubmitted}
+                onCancel={() => {
+                  setShowInspectionForm(false);
+                  setInspectionBooking(null);
+                }}
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Inspection View Modal */}
+      <AnimatePresence>
+        {showInspectionView && inspectionBooking && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+            >
+               <div className="bg-gray-800 rounded-2xl relative">
+                  <button 
+                    onClick={() => setShowInspectionView(false)}
+                    className="absolute top-4 right-4 z-10 p-2 bg-gray-700 hover:bg-gray-600 rounded-full text-white"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                  <div className="p-1">
+                    <InspectionView 
+                      bookingId={inspectionBooking.id || inspectionBooking._id} 
+                      readOnly={true}
+                    />
+                  </div>
+               </div>
             </motion.div>
           </motion.div>
         )}

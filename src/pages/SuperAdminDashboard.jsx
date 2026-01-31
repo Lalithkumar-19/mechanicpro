@@ -31,6 +31,7 @@ import CustomersManagement from '../components/admin/CustomersManagement';
 import ServicesManagement from '../components/admin/ServicesManagement';
 import AnalyticsDashboard from '../components/admin/AnalyticsDashboard';
 import NotificationsPanel from '../components/admin/NotificationsPanel';
+import CarouselManager from '../components/Admin/CarouselManager';
 
 const SuperAdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -260,6 +261,7 @@ const SuperAdminDashboard = () => {
     { id: 'spare-parts', label: 'Spare Parts', icon: Package },
     { id: 'customers', label: 'Customers', icon: User },
     { id: 'services', label: 'Services', icon: Settings },
+    { id: 'carousel', label: 'Carousel', icon: Sparkles },
     { id: 'notifications', label: 'Notifications', icon: Bell }
   ];
   const [email, setEmail] = useState("");
@@ -364,6 +366,8 @@ const SuperAdminDashboard = () => {
         return <ServicesManagement services={services} setServices={setServices} addNotification={addNotification} />;
       case 'analytics':
         return <AnalyticsDashboard bookings={bookings} mechanics={mechanics} services={services} />;
+      case 'carousel':
+        return <CarouselManager />;
       case 'notifications':
         return <NotificationsPanel notifications={notifications} setNotifications={setNotifications} />;
       default:
